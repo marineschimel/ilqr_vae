@@ -7,8 +7,7 @@
 - install dune (run `opam install dune`) 
 - install owl (run `opam install owl`); you will need to have OpenBLAS installed.
 - install mpi, accessor, owl_ode, (`opam install mpi accessor ppx_accessor owl_ode`)
-- clone https://github.com/ghennequin/adam, https://github.com/hennequin-lab/owl_parameters, https://github.com/hennequin-lab/comm, https://github.com/hennequin-lab/cmdargs and for each of these repos, do `dune build @install` followed by `dune install` (after `cd`-ing into the corresponding directory)
-- install dilqr (open zip file and run `dune build @install` and `dune install`) 
+- clone https://github.com/ghennequin/adam, https://github.com/hennequin-lab/owl_parameters, https://github.com/hennequin-lab/comm, https://github.com/hennequin-lab/cmdargs, https://github.com/tachukao/dilqr and for each of these repos, do `dune build @install` followed by `dune install` (after `cd`-ing into the corresponding directory)
 
 ## To run examples
 
