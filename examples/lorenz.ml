@@ -22,9 +22,12 @@ let setup =
 let n_output = 3
 let noise_std = 0.1
 
-module Model = Make_model (struct
+module M = Make_model (struct
   let setup = setup
+  let n_beg = Some (setup.n / setup.m)
 end)
+
+open M
 
 let reg ~(prms : Model.P.p) =
   let z = Float.(1e-5 / of_int Int.(setup.n * setup.n)) in
@@ -139,7 +142,7 @@ let final_prms =
   in
   Model.train
     ~n_samples:(fun k -> if k < 200 then 1 else 1)
-    ~max_iter:Cmdargs.(get_int "-max_iter" |> default 10000)
+    ~max_iter:Cmdargs.(get_int "-max_iter" |> default 40000)
     ~conv_threshold:1E-4
     ~recycle_u:false
     ~save_progress_to:(10, 200, in_dir "progress")
