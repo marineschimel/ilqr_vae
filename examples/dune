@@ -1,0 +1,10 @@
+(executables
+ (names lorenz lorenz_analysis)
+ (libraries cmdargs ilqr_vae owl-ode)
+ (preprocess
+  (pps ppx_accessor)))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

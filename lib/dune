@@ -1,0 +1,11 @@
+(library
+ (name ilqr_vae)
+ (public_name ilqr_vae)
+ (libraries base owl owl-parameters adam dilqr comm accessor)
+ (preprocess
+  (pps ppx_accessor)))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

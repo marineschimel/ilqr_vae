@@ -1,0 +1,15 @@
+opam-version: "2.0"
+maintainer: "Hennequin Lab"
+authors: [ "Marine Schimel, Guillaume Hennequin" ]
+license: "MIT"
+homepage: "https://github.com/marineschimel/ilqr_vae"
+dev-repo: "git+https://github.com/hennequin-lab/ilqr_vae.git"
+bug-reports: "https://github.com/hennequin-lab/ilqr_vae/issues"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "ocaml" {>= "4.12.0"}
+  "dune" {build & >= "1.1.0"}
+]
+synopsis: "iLQR-VAE"
