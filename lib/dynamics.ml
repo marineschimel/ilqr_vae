@@ -418,6 +418,7 @@ struct
     let sigma = Float.(radius / sqrt (of_int n)) in
     { wh = set (AD.Mat.gaussian ~sigma n n)
     ; bh = set (AD.Mat.zeros 1 n)
+    ; bf = set (AD.Mat.create 1 n 3.)
     ; uh = set (AD.Mat.gaussian ~sigma n n)
     ; uf = set (AD.Mat.gaussian ~sigma:0. n n)
     ; b = Some (set (AD.Mat.gaussian ~sigma:Float.(1. / sqrt (of_int m)) m n))
@@ -454,6 +455,7 @@ struct
   let dyn ~theta =
     let wh = Owl_parameters.extract theta.wh in
     let bh = Owl_parameters.extract theta.bh in
+    let bf = Owl_parameters.extract theta.bf in
     let uh = Owl_parameters.extract theta.uh in
     let uf = Owl_parameters.extract theta.uf in
     let n = AD.Mat.col_num bh in
@@ -467,7 +469,7 @@ struct
     let default x u =
       let h_pred = x in
       let x = u_eff u in
-      let f = sigma AD.Maths.(h_pred *@ uf) in
+      let f = sigma AD.Maths.(bf + (h_pred *@ uf)) in
       let h_hat =
         let hf = AD.Maths.(h_pred * f) in
         AD.Maths.(phi AD.Maths.(bh + (hf *@ uh)) + (x *@ wh))
@@ -484,6 +486,7 @@ struct
   let dyn_x =
     let _dyn_x ~theta =
       let wh = Owl_parameters.extract theta.wh in
+      let bf = Owl_parameters.extract theta.bf in
       let bh = Owl_parameters.extract theta.bh in
       let uh = Owl_parameters.extract theta.uh in
       let uf = Owl_parameters.extract theta.uf in
@@ -493,7 +496,7 @@ struct
       let default x u =
         let h_pred = x in
         let x = u_eff u in
-        let f_pre = AD.Maths.(h_pred *@ uf) in
+        let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
         let f = sigma f_pre in
         let h_hat_pre =
           let hf = AD.Maths.(h_pred * f) in
@@ -517,6 +520,7 @@ struct
   let dyn_u =
     let _dyn_u ~theta =
       let wh = Owl_parameters.extract theta.wh in
+      let bf = Owl_parameters.extract theta.bf in
       let bh = Owl_parameters.extract theta.bh in
       let uf = Owl_parameters.extract theta.uf in
       let b =
@@ -529,7 +533,7 @@ struct
       let beg_bs = generate_bs ~n ~m in
       let default x =
         let h_pred = x in
-        let f_pre = AD.Maths.(h_pred *@ uf) in
+        let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
         let f = sigma f_pre in
         AD.Maths.(b *@ (wh * f))
       in
