@@ -93,9 +93,8 @@ let init_prms =
         | None ->
           let n = setup.n
           and m = setup.m in
-          (* let prior = U.init ~spatial_std:1.0 ~first_bin:1. ~m learned in *)
           let prior = U.init ~spatial_std:1.0 ~nu:20. ~m learned in
-          let dynamics = D.init ~radius:0.05 ~n ~m learned in
+          let dynamics = D.init ~n ~m learned in
           let likelihood = L.init ~sigma2:Float.(square noise_std) ~n ~n_output learned in
           Generative_P.{ prior; dynamics; likelihood }
       in

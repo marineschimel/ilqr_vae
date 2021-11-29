@@ -33,7 +33,6 @@ end) : sig
     -> m:int
     -> Owl_parameters.setter
     -> Owl_parameters.t P.prm
-
 end
 
 (** Mini-GRU (Heck, 2017) *)
@@ -46,7 +45,7 @@ module MGU (X : sig
 end) : sig
   include Dynamics_T with type 'a P.prm = 'a MGU_P.prm
 
-  val init : ?radius:float -> n:int -> m:int -> Owl_parameters.setter -> P.p
+  val init : n:int -> m:int -> Owl_parameters.setter -> P.p
 end
 
 (** Mini-GRU, 2rd simplification (Heck, 2017) *)
@@ -59,5 +58,5 @@ module MGU2 (X : sig
 end) : sig
   include Dynamics_T with type 'a P.prm = 'a MGU2_P.prm
 
-  val init : ?radius:float -> n:int -> m:int -> Owl_parameters.setter -> P.p
+  val init : n:int -> m:int -> Owl_parameters.setter -> P.p
 end
