@@ -7,18 +7,8 @@ open Lorenz_common
 
 let dir = Cmdargs.(get_string "-d" |> force ~usage:"-d [dir]")
 let in_dir = Printf.sprintf "%s/%s" dir
-let reuse = Cmdargs.get_string "-reuse"
-
-let setup =
-  C.broadcast' (fun () ->
-      match reuse with
-      | Some _ -> Misc.read_bin (in_dir "setup.bin")
-      | None ->
-        let s = { n = 20; m = 5; n_trials = 112; n_steps = 100 } in
-        Misc.save_bin ~out:(in_dir "setup.bin") s;
-        s)
-
-
+let reuse_data = Cmdargs.check "-reuse_data"
+let setup = { n = 20; m = 5; n_trials = 112; n_steps = 100 }
 let n_output = 3
 let noise_std = 0.1
 
@@ -44,10 +34,10 @@ let _ = C.print_endline "Data generation..."
 
 (* generate training and test data right away *)
 let data =
-  C.broadcast' (fun () ->
-      match reuse with
-      | Some _ -> Misc.read_bin (in_dir "train_data.bin")
-      | None ->
+  if reuse_data
+  then Misc.read_bin (in_dir "train_data.bin")
+  else
+    C.broadcast' (fun () ->
         let data =
           Lorenz_common.generate_from_long ~n_steps:setup.n_steps (2 * setup.n_trials)
           |> (fun v -> Arr.reshape v [| -1; 3 |])
@@ -86,17 +76,12 @@ let _ = C.print_endline "Data generated and broadcast."
 let init_prms =
   C.broadcast' (fun () ->
       let generative_prms =
-        match reuse with
-        | Some f ->
-          let (prms : Model.P.p) = Misc.read_bin (in_dir f) in
-          prms.generative
-        | None ->
-          let n = setup.n
-          and m = setup.m in
-          let prior = U.init ~spatial_std:1.0 ~nu:20. ~m learned in
-          let dynamics = D.init ~n ~m learned in
-          let likelihood = L.init ~sigma2:Float.(square noise_std) ~n ~n_output learned in
-          Generative_P.{ prior; dynamics; likelihood }
+        let n = setup.n
+        and m = setup.m in
+        let prior = U.init ~spatial_std:1.0 ~nu:20. ~m learned in
+        let dynamics = D.init ~n ~m learned in
+        let likelihood = L.init ~sigma2:Float.(square noise_std) ~n ~n_output learned in
+        Generative_P.{ prior; dynamics; likelihood }
       in
       Model.init ~tie:true generative_prms learned)
 
