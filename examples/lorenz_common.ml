@@ -10,42 +10,43 @@ type setup =
   ; n_steps : int
   }
 
-module N_beg = struct
-  let n_beg = None
-end
-
-module U = Priors.Student (N_beg)
-
-module L = Likelihoods.Gaussian (struct
-  let label = "o"
-  let normalize_c = false
-end)
-
-module D = Dynamics.MGU2 (struct
-  let phi x = AD.Maths.(AD.requad x - F 1.)
-  let d_phi = AD.d_requad
-  let sigma x = AD.Maths.sigmoid x
-
-  let d_sigma x =
-    let tmp = AD.Maths.(exp (neg x)) in
-    AD.Maths.(tmp / sqr (F 1. + tmp))
-
-
-  include N_beg
-end)
-
 module Make_model (P : sig
   val setup : setup
+  val n_beg : int Option.t
 end) =
-  VAE (U) (D) (L)
-    (struct
-      let n = P.setup.n
-      let m = P.setup.m
-      let n_steps = P.setup.n_steps
-      let diag_time_cov = false
+struct
+  module U = Priors.Student (struct
+    let n_beg = P.n_beg
+  end)
 
-      include N_beg
-    end)
+  module L = Likelihoods.Gaussian (struct
+    let label = "o"
+    let normalize_c = false
+  end)
+
+  module D = Dynamics.MGU2 (struct
+    let phi x = AD.Maths.(AD.requad x - F 1.)
+    let d_phi = AD.d_requad
+    let sigma x = AD.Maths.sigmoid x
+
+    let d_sigma x =
+      let tmp = AD.Maths.(exp (neg x)) in
+      AD.Maths.(tmp / sqr (F 1. + tmp))
+
+
+    let n_beg = P.n_beg
+  end)
+
+  module Model =
+    VAE (U) (D) (L)
+      (struct
+        let n = P.setup.n
+        let m = P.setup.m
+        let n_steps = P.setup.n_steps
+        let diag_time_cov = false
+        let n_beg = P.n_beg
+      end)
+end
 
 (* output is k x t x 3 *)
 let generate ?(sigma = 10.) ?(rho = 28.) ?(beta = 8. /. 3.) ~n_steps n_trials =
