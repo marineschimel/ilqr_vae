@@ -94,20 +94,14 @@ module MGU2_P = struct
     ; wh : 'a
     ; uh : 'a
     ; bh : 'a
-    ; b : 'a option
     }
   [@@deriving accessors ~submodule:A]
 
-  let map ~f x =
-    { uf = f x.uf; bh = f x.bh; uh = f x.uh; wh = f x.wh; b = Option.map ~f x.b }
-
+  let map ~f x = { uf = f x.uf; bh = f x.bh; uh = f x.uh; wh = f x.wh }
 
   let fold ?prefix ~init ~f x =
     let init = f init (x.uh, with_prefix ?prefix "uh") in
     let init = f init (x.uf, with_prefix ?prefix "uf") in
     let init = f init (x.bh, with_prefix ?prefix "bh") in
-    let init = f init (x.wh, with_prefix ?prefix "wh") in
-    match x.b with
-    | None -> init
-    | Some b -> f init (b, with_prefix ?prefix "b")
+    f init (x.wh, with_prefix ?prefix "wh")
 end
