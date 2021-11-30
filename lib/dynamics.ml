@@ -275,10 +275,12 @@ struct
 
 
   let with_wh_rescaled theta =
+    let m = AD.Mat.row_num (Owl_parameters.extract theta.wh) in
     { theta with
       wh =
         Owl_parameters.map
-          (fun wh -> AD.Maths.(wh / sqrt (sum ~axis:0 (sqr wh))))
+          (fun wh ->
+            AD.Maths.(F Float.(sqrt (of_int m)) * wh / sqrt (sum ~axis:1 (sqr wh))))
           theta.wh
     }
 
@@ -420,10 +422,12 @@ struct
 
 
   let with_wh_rescaled theta =
+    let m = AD.Mat.row_num (Owl_parameters.extract theta.wh) in
     { theta with
       wh =
         Owl_parameters.map
-          (fun wh -> AD.Maths.(wh / sqrt (sum ~axis:0 (sqr wh))))
+          (fun wh ->
+            AD.Maths.(F Float.(sqrt (of_int m)) * wh / sqrt (sum ~axis:1 (sqr wh))))
           theta.wh
     }
 
