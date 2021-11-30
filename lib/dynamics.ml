@@ -278,7 +278,7 @@ struct
     { theta with
       wh =
         Owl_parameters.map
-          (fun wh -> AD.Maths.(wh / sqrt (sum ~axis:0 (sqr wh))))
+          (fun wh -> AD.Maths.(wh / sqrt (sum ~axis:1 (sqr wh))))
           theta.wh
     }
 
@@ -424,7 +424,7 @@ struct
     { theta with
       wh =
         Owl_parameters.map
-          (fun wh -> AD.Maths.(wh / sqrt (sum ~axis:0 (sqr wh))))
+          (fun wh -> AD.Maths.(wh / sqrt (sum ~axis:1 (sqr wh))))
           theta.wh
     }
 
