@@ -416,7 +416,7 @@ struct
        f : size of h so 1xN *)
     { wh = set (AD.Mat.gaussian m n)
     ; bh = set (AD.Mat.zeros 1 n)
-    ; bf = set (AD.Mat.create 1 n 3.)
+    ; bf = set (AD.Mat.zeros 1 n)
     ; uh = set (AD.Mat.zeros n n)
     ; uf = set (AD.Mat.zeros n n)
     }
