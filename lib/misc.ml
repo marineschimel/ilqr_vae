@@ -6,7 +6,7 @@ let save_bin ~out:filename m =
   Stdio.Out_channel.close output
 
 
-let read_bin filename =
+let load_bin filename =
   let input = Stdio.In_channel.create filename in
   let m = Caml.Marshal.from_channel input in
   Stdio.In_channel.close input;

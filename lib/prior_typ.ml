@@ -1,25 +1,23 @@
 open Base
 open Owl_parameters
-open Covariance
 
-module type Prior_T = sig
+module type Dims_T = sig
+  val m : int
+  val n_beg : int
+end
+
+module type T = sig
   module P : Owl_parameters.T
   open P
+  include Dims_T
 
   val requires_linesearch : bool
   val spatial_stds : prms:p -> AD.t
-
-  val kl_to_gaussian
-    : [ `direct of
-        prms:p -> mu:AD.t -> space:Covariance.P.p -> time:Covariance.P.p -> AD.t
-      | `sampling_based
-      ]
-
-  val sample : prms:p -> n_steps:int -> m:int -> AD.t
+  val sample : prms:p -> n_steps:int -> AD.t
   val neg_logp_t : prms:p -> k:int -> x:AD.t -> u:AD.t -> AD.t
   val neg_jac_t : (prms:p -> k:int -> x:AD.t -> u:AD.t -> AD.t) option
   val neg_hess_t : (prms:p -> k:int -> x:AD.t -> u:AD.t -> AD.t) option
-  val logp : prms:p -> n_steps:int -> AD.t -> AD.t
+  val logp : prms:p -> AD.t -> AD.t
 end
 
 module Gaussian_P = struct

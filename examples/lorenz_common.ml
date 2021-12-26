@@ -1,51 +1,35 @@
 open Base
 open Owl
 open Ilqr_vae
-open Variational
 
-type setup =
-  { n : int
-  ; m : int
-  ; n_trials : int
-  ; n_steps : int
-  }
+module type Setup = sig
+  val n : int
+  val m : int
+  val n_output : int
+  val n_trials : int
+  val n_steps : int
+end
 
-module Make_model (P : sig
-  val setup : setup
-  val n_beg : int Option.t
-end) =
-struct
-  module U = Priors.Student (struct
-    let n_beg = P.n_beg
+module Make_model (S : Setup) = struct
+  module D = Dynamics.MGU2 (struct
+    include S
+    include Default.MGU_funs
   end)
 
-  module L = Likelihoods.Gaussian (struct
+  module U = Prior.Student (struct
+    include S
+
+    let n_beg = D.n_beg
+  end)
+
+  module L = Likelihood.Gaussian (struct
+    include S
+
     let label = "o"
     let normalize_c = false
   end)
 
-  module D = Dynamics.MGU2 (struct
-    let phi x = AD.Maths.(AD.requad x - F 1.)
-    let d_phi = AD.d_requad
-    let sigma x = AD.Maths.sigmoid x
-
-    let d_sigma x =
-      let tmp = AD.Maths.(exp (neg x)) in
-      AD.Maths.(tmp / sqr (F 1. + tmp))
-
-
-    let n_beg = P.n_beg
-  end)
-
-  module Model =
-    VAE (U) (D) (L)
-      (struct
-        let n = P.setup.n
-        let m = P.setup.m
-        let n_steps = P.setup.n_steps
-        let diag_time_cov = false
-        let n_beg = P.n_beg
-      end)
+  include Default.Model (U) (D) (L) (S)
 end
 
 (* output is k x t x 3 *)
