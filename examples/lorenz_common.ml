@@ -11,10 +11,16 @@ module type Setup = sig
 end
 
 module Make_model (S : Setup) = struct
-  module D = Dynamics.MGU2 (struct
+  module D = Dynamics.Nonlinear (struct
+    include S
+
+    let phi = `linear
+  end)
+
+  (* module D = Dynamics.MGU2 (struct
     include S
     include Default.MGU_funs
-  end)
+  end) *)
 
   module U = Prior.Student (struct
     include S

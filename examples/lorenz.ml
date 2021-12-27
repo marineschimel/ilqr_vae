@@ -1,8 +1,6 @@
 open Base
 open Owl
 open Ilqr_vae
-open Vae
-open Generative
 open Owl_parameters
 open Lorenz_common
 
@@ -13,7 +11,7 @@ let reuse_data = Cmdargs.check "-reuse_data"
 module S = struct
   let n = 20
   let m = 5
-  let n_trials = 6
+  let n_trials = 2
   let n_steps = 100
   let n_output = 3
   let noise_std = 0.1
@@ -21,9 +19,9 @@ end
 
 open Make_model (S)
 
-let regularizer ~prms =
-  D.default_regularizer ~prms:prms.VAE_P.generative.Generative_P.dynamics
-
+let regularizer ~prms = AD.F 0.
+(*  D.default_regularizer ~prms:prms.Vae.P.generative.Generative.P.dynamics
+*)
 
 (* ----------------------------------------- 
    -- Generate Lorenz data
@@ -65,7 +63,7 @@ let init_prms =
         let prior = U.init ~spatial_std:1.0 ~nu:20. learned in
         let dynamics = D.init learned in
         let likelihood = L.init ~sigma2:Float.(square S.noise_std) learned in
-        Generative_P.{ prior; dynamics; likelihood }
+        Generative.P.{ prior; dynamics; likelihood }
       in
       let recognition = R.init learned in
       Model.init generative recognition)

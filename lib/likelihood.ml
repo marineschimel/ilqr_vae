@@ -2,16 +2,6 @@ open Base
 open Owl
 include Likelihood_typ
 
-(*
-let stats (type data) (module L : Likelihood_T with type data = data) data =
-  let concat g =
-    Array.map data ~f:(fun x -> AD.unpack_arr (g x) |> fun v -> Arr.expand v 3)
-    |> Arr.concatenate ~axis:0
-  in
-  let us = concat (fun x -> x.u) in
-  ()
-*)
-
 module Arr_output (Label : sig
   val label : String.t
 end) =

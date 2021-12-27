@@ -51,21 +51,6 @@ struct
       type theta = G.P.p
 
       let primal' = primal'
-
-      let cost ~theta =
-        let cost_lik = L.neg_logp_t ~prms:theta.likelihood in
-        let cost_liks =
-          Array.init n_steps ~f:(fun k -> cost_lik ~o_t:(L.output_slice ~k o))
-        in
-        let cost_u = U.neg_logp_t ~prms:theta.prior in
-        fun ~k ~x ~u ->
-          let cost_lik =
-            if k < n_beg then AD.F 0. else cost_liks.(k - n_beg) ~k:(k - n_beg) ~z_t:x
-          in
-          let cost_u = cost_u ~k ~x ~u in
-          AD.Maths.(cost_u + cost_lik)
-
-
       let m = m
       let n = n
 
@@ -79,10 +64,10 @@ struct
             let neg_jac_ts =
               Array.init n_steps ~f:(fun k -> neg_jac_t ~o_t:(L.output_slice ~k o))
             in
-            let tmp = AD.Mat.zeros 1 n in
+            let zeros = AD.Mat.zeros 1 n in
             fun ~k ~x ~u:_ ->
               if k < n_beg
-              then tmp
+              then zeros
               else (
                 let k = k - n_beg in
                 neg_jac_ts.(k) ~k ~z_t:x))
@@ -94,10 +79,10 @@ struct
             let neg_hess_ts =
               Array.init n_steps ~f:(fun k -> neg_hess_t ~o_t:(L.output_slice ~k o))
             in
-            let tmp = AD.Mat.zeros n n in
+            let zeros = AD.Mat.zeros n n in
             fun ~k ~x ~u:_ ->
               if k < n_beg
-              then tmp
+              then zeros
               else (
                 let k = k - n_beg in
                 neg_hess_ts.(k) ~k ~z_t:x))
@@ -108,27 +93,39 @@ struct
 
 
       let rl_ux =
-        let tmp = AD.Mat.zeros m n in
-        Some (fun ~theta:_ ~k:_ ~x:_ ~u:_ -> tmp)
+        let zeros = AD.Mat.zeros m n in
+        Some (fun ~theta:_ ~k:_ ~x:_ ~u:_ -> zeros)
 
-
-      let final_cost ~theta:_ ~k:_ ~x:_ = AD.F 0.
 
       let fl_x =
-        let z = AD.Mat.zeros 1 n in
-        Some (fun ~theta:_ ~k:_ ~x:_ -> z)
+        let zeros = AD.Mat.zeros 1 n in
+        Some (fun ~theta:_ ~k:_ ~x:_ -> zeros)
 
 
       let fl_xx =
-        let z = AD.Mat.zeros n n in
-        Some (fun ~theta:_ ~k:_ ~x:_ -> z)
+        let zeros = AD.Mat.zeros n n in
+        Some (fun ~theta:_ ~k:_ ~x:_ -> zeros)
 
 
       let dyn ~theta = D.dyn ~theta:theta.dynamics
       let dyn_x = Option.map D.dyn_x ~f:(fun d ~theta -> d ~theta:theta.dynamics)
       let dyn_u = Option.map D.dyn_u ~f:(fun d ~theta -> d ~theta:theta.dynamics)
-      let running_loss = cost
-      let final_loss = final_cost
+
+      let running_loss ~theta =
+        let cost_o =
+          let c = L.neg_logp_t ~prms:theta.likelihood in
+          Array.init n_steps ~f:(fun k -> c ~o_t:(L.output_slice ~k o))
+        in
+        let cost_u = U.neg_logp_t ~prms:theta.prior in
+        fun ~k ~x ~u ->
+          let cost_o =
+            if k < n_beg then AD.F 0. else cost_o.(k - n_beg) ~k:(k - n_beg) ~z_t:x
+          in
+          let cost_u = cost_u ~k ~x ~u in
+          AD.Maths.(cost_u + cost_o)
+
+
+      let final_loss ~theta:_ ~k:_ ~x:_ = AD.F 0.
     end
     in
     let module IP =
@@ -166,7 +163,7 @@ struct
         ~theta:prms
         ()
     in
-    let tau = AD.Maths.reshape tau [| n_steps_total + 1; -1 |] in
+    let tau = AD.Maths.reshape tau [| n_steps_total + 1; n + m |] in
     AD.Maths.get_slice [ [ 0; -2 ]; [ n; -1 ] ] tau
 
 

@@ -1,7 +1,7 @@
 open Base
 open Owl_parameters
 
-module VAE_P = struct
+module P = struct
   type ('g, 'r) prm_ =
     { generative : 'g
     ; recognition : 'r

@@ -7,8 +7,8 @@ include Vae_typ
    ------------------------------------- *)
 
 module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
-  module P = Owl_parameters.Make (VAE_P.Make (G.P) (R.P))
-  open VAE_P
+  module P = Owl_parameters.Make (P.Make (G.P) (R.P))
+  open Vae_typ.P
   module G = G
   module R = R
 
@@ -45,11 +45,8 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
       let norm_const = Float.(1. / of_int n_posterior_samples) in
       fun data ->
         let samples =
-          let a = mu data in
-          let b = sample_cov ~n_samples:n_posterior_samples in
-          AD.print_shape ~label:"a" a;
-          AD.print_shape ~label:"b" b;
-          AD.Maths.(a + b) in
+          AD.Maths.(AD.expand_to_3d (mu data) + sample_cov ~n_samples:n_posterior_samples)
+        in
         let z = integrate ~u:samples in
         let z = AD.Maths.get_slice [ []; [ G.n_beg - 1; -1 ]; [ 0; G.n - 1 ] ] z in
         let data = Data.fill data ~u:samples ~z in
