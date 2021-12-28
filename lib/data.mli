@@ -6,7 +6,7 @@ type (_, 'o) t
 val pack : ?id:int -> 'o -> ([ `o ], 'o) t
 val fill : u:AD.t -> z:AD.t -> ([> `o ], 'o) t -> ([ `o | `uz ], 'o) t
 val hash : (_, 'o) t -> String.t
-val id : (_, 'o) t -> int 
+val id : (_, 'o) t -> int
 val u : ([> `uz ], 'o) t -> AD.t
 val z : ([> `uz ], 'o) t -> AD.t
 val o : (_, 'o) t -> 'o
@@ -39,4 +39,3 @@ val split_and_distribute
   -> train:int
   -> ('typ, 'o) t Array.t Lazy.t
   -> ('typ, 'o) t Array.t * ('typ, 'o) t Array.t
-

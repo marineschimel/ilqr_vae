@@ -37,4 +37,3 @@ struct
 
   module Model = Make (G) (R)
 end
-

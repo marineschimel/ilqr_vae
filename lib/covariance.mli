@@ -11,4 +11,3 @@ val init
 
 val to_chol_factor : P.p -> AD.t
 val invert : P.p -> P.p
-

@@ -223,4 +223,3 @@ struct
     in
     AD.Maths.(F 0.5 * (log_det + (F dim * F Float.(1. + log Const.pi2))))
 end
-

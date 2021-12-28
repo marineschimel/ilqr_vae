@@ -1,7 +1,13 @@
 include module type of Vae_typ
 
 module Make (G : Generative.T) (R : Recognition.T with module G = G) : sig
-  module G : module type of G with module P = G.P and module U = G.U and module D = G.D and module L = G.L
+  module G :
+    module type of G
+      with module P = G.P
+       and module U = G.U
+       and module D = G.D
+       and module L = G.L
+
   module R : module type of R with module P = R.P and module G = G
   module P : module type of Owl_parameters.Make (P.Make (G.P) (R.P))
   open P

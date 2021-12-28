@@ -42,4 +42,3 @@ let invert c =
     | _ -> Learned t
   in
   { d; t }
-

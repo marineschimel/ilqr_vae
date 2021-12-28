@@ -70,4 +70,3 @@ let split_and_distribute ?(reuse = false) ~prefix ~train x =
             y) )
   in
   distribute x_train, distribute x_test
-
