@@ -19,14 +19,6 @@ end
 
 open Make_model (S)
 
-let regularizer ~prms = AD.F 0.
-(*  D.default_regularizer ~prms:prms.Vae.P.generative.Generative.P.dynamics
-*)
-
-(* ----------------------------------------- 
-   -- Generate Lorenz data
-   ----------------------------------------- *)
-
 let train_data, test_data =
   let data =
     lazy
@@ -86,4 +78,7 @@ let final_prms =
     train_data
 
 
-let _ = Model.save_results ~prefix:(in_dir "final") ~prms:final_prms train_data
+let _ =
+  Model.save_results ~prefix:(in_dir "final.train") ~prms:final_prms train_data;
+  Model.save_results ~prefix:(in_dir "final.test") ~prms:final_prms test_data
+

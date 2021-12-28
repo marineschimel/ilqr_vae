@@ -2,10 +2,6 @@ open Base
 open Owl
 include Vae_typ
 
-(* -------------------------------------
-   -- VAE
-   ------------------------------------- *)
-
 module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
   module P = Owl_parameters.Make (P.Make (G.P) (R.P))
   open Vae_typ.P
@@ -97,23 +93,24 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
           data_batch
           ~init:(0., Arr.(zeros (shape theta)))
           ~f:(fun i (accu_loss, accu_g) datai ->
-            (* try *)
-            let open AD in
-            let theta = make_reverse (Arr (Owl.Mat.copy theta)) (AD.tag ()) in
-            let prms = P.unpack handle theta in
-            let elbo = elbo ~prms ~n_posterior_samples datai in
-            let loss = AD.Maths.(neg elbo / F Float.(of_int total_size)) in
-            (* optionally add regularizer *)
-            let loss =
-              Option.value_map regularizer ~default:loss ~f:(fun r ->
-                  AD.Maths.(loss + r ~prms))
-            in
-            reverse_prop (F 1.) loss;
-            accu_loss +. unpack_flt loss, Owl.Mat.(accu_g + unpack_arr (adjval theta))
-            (* with
-            | _ ->
+            try
+              let open AD in
+              let theta = make_reverse (Arr (Owl.Mat.copy theta)) (AD.tag ()) in
+              let prms = P.unpack handle theta in
+              let elbo = elbo ~prms ~n_posterior_samples datai in
+              let loss = AD.Maths.(neg elbo / F Float.(of_int total_size)) in
+              (* optionally add regularizer *)
+              let loss =
+                Option.value_map regularizer ~default:loss ~f:(fun r ->
+                    AD.Maths.(loss + r ~prms))
+              in
+              reverse_prop (F 1.) loss;
+              accu_loss +. unpack_flt loss, Owl.Mat.(accu_g + unpack_arr (adjval theta))
+            with
+            | e ->
               Stdio.printf "Trial %i on node %i failed with some exception." i C.rank;
-              accu_loss, accu_g *))
+              raise e
+            (*  accu_loss, accu_g *))
       in
       let loss = Mpi.reduce_float loss Mpi.Float_sum 0 Mpi.comm_world in
       Mpi.reduce_bigarray g gradient Mpi.Sum 0 Mpi.comm_world;

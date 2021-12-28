@@ -30,6 +30,7 @@ struct
     Recognition.ILQR (U) (D) (L)
       (struct
         let conv_threshold = 1E-4
+        let reuse_u = `with_proba 0.9
         let diag_time_cov = false
         let n_steps = S.n_steps
       end)

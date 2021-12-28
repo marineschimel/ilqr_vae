@@ -7,6 +7,7 @@ module ILQR
     (D : Dynamics.T)
     (L : Likelihood.T) (X : sig
       val conv_threshold : float
+      val reuse_u : [ `never | `always | `with_proba of float ]
       val diag_time_cov : bool
       val n_steps : int
     end) =
@@ -43,9 +44,13 @@ struct
     }
 
 
+  (* a store for reusing previous solves *)
+  let store = Hashtbl.create ~size:10 (module String)
+
   (* n : dimensionality of state space; m : input dimension *)
-  let solve ?u_init ~primal' ~prms data =
+  let solve ~primal' ~prms data =
     let o = Data.o data in
+    let hash = Data.hash data in
     let open Generative.P in
     let module M = struct
       type theta = G.P.p
@@ -145,10 +150,18 @@ struct
         Float.(pct_change < X.conv_threshold)
     in
     let us =
-      match u_init with
-      | None -> List.init n_steps_total ~f:(fun _ -> AD.Mat.zeros 1 m)
-      | Some us ->
-        List.init n_steps_total ~f:(fun k -> AD.pack_arr (Mat.get_slice [ [ k ] ] us))
+      let no_reuse () = List.init n_steps_total ~f:(fun _ -> AD.Mat.zeros 1 m) in
+      let reuse () =
+        match Hashtbl.find store hash with
+        | Some u ->
+          List.init n_steps_total ~f:(fun k -> AD.pack_arr (Mat.get_slice [ [ k ] ] u))
+        | None -> no_reuse ()
+      in
+      match X.reuse_u with
+      | `always -> reuse ()
+      | `never -> no_reuse ()
+      | `with_proba p ->
+        if Float.(Stats.uniform_rvs ~a:0. ~b:1. < p) then reuse () else no_reuse ()
     in
     (*
         u0        u1  u2 ......   uT
@@ -164,13 +177,19 @@ struct
         ()
     in
     let tau = AD.Maths.reshape tau [| n_steps_total + 1; n + m |] in
-    AD.Maths.get_slice [ [ 0; -2 ]; [ n; -1 ] ] tau
+    let u = AD.Maths.get_slice [ [ 0; -2 ]; [ n; -1 ] ] tau in
+    (* cache the solution for potential later reuse as initial condition *)
+    if Poly.(X.reuse_u <> `never)
+    then (
+      Hashtbl.remove store hash;
+      Hashtbl.add_exn store ~key:hash ~data:(AD.unpack_arr u));
+    u
 
 
   (* TODO: still have to implement re-use of [u_init] in this new functor interface... *)
   let posterior_mean ?gen_prms _ =
     let prms = Option.value_exn gen_prms in
-    solve ?u_init:None ~primal':(G.P.map ~f:(Owl_parameters.map AD.primal')) ~prms
+    solve ~primal':(G.P.map ~f:(Owl_parameters.map AD.primal')) ~prms
 
 
   (* returns K x T x M array *)

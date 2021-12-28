@@ -39,7 +39,7 @@ end) : sig
   include T with type 'a P.prm = 'a MGU_P.prm
 
   val init : Owl_parameters.setter -> P.p
-  val default_regularizer: prms:P.p -> AD.t
+  val default_regularizer: ?lambda:float -> P.p -> AD.t
 end
 
 (** Mini-GRU, 2rd simplification (Heck, 2017) *)
@@ -53,5 +53,5 @@ end) : sig
   include T with type 'a P.prm = 'a MGU2_P.prm
 
   val init : Owl_parameters.setter -> P.p
-  val default_regularizer: prms:P.p -> AD.t
+  val default_regularizer: ?lambda:float -> P.p -> AD.t
 end

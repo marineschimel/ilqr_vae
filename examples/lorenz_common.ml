@@ -11,16 +11,10 @@ module type Setup = sig
 end
 
 module Make_model (S : Setup) = struct
-  module D = Dynamics.Nonlinear (struct
-    include S
-
-    let phi = `linear
-  end)
-
-  (* module D = Dynamics.MGU2 (struct
+  module D = Dynamics.MGU2 (struct
     include S
     include Default.MGU_funs
-  end) *)
+  end)
 
   module U = Prior.Student (struct
     include S
@@ -35,8 +29,22 @@ module Make_model (S : Setup) = struct
     let normalize_c = false
   end)
 
+  let regularizer ~prms =
+    D.default_regularizer ~lambda:1E-5 prms.Vae.P.generative.Generative.P.dynamics
+
+
   include Default.Model (U) (D) (L) (S)
 end
+
+let lorenz_flow ~sigma ~rho ~beta x _ =
+  let x = Mat.get x 0 0
+  and y = Mat.get x 0 1
+  and z = Mat.get x 0 2 in
+  let xdot = sigma *. (y -. x)
+  and ydot = (x *. (rho -. z)) -. y
+  and zdot = (x *. y) -. (beta *. z) in
+  Mat.(of_array [| xdot; ydot; zdot |] 1 3)
+
 
 (* output is k x t x 3 *)
 let generate ?(sigma = 10.) ?(rho = 28.) ?(beta = 8. /. 3.) ~n_steps n_trials =
@@ -44,15 +52,7 @@ let generate ?(sigma = 10.) ?(rho = 28.) ?(beta = 8. /. 3.) ~n_steps n_trials =
   let dt = 0.01 in
   let duration = Float.(dt * of_int Int.(tt - 1)) in
   let tspec = Owl_ode.Types.(T1 { t0 = 0.; duration; dt }) in
-  let f x _ =
-    let x = Mat.get x 0 0
-    and y = Mat.get x 0 1
-    and z = Mat.get x 0 2 in
-    let xdot = sigma *. (y -. x)
-    and ydot = (x *. (rho -. z)) -. y
-    and zdot = (x *. y) -. (beta *. z) in
-    Mat.(of_array [| xdot; ydot; zdot |] 1 3)
-  in
+  let f = lorenz_flow ~sigma ~rho ~beta in
   Array.init n_trials ~f:(fun _ ->
       let x0 = Mat.uniform ~a:(-10.) ~b:10. 1 3 in
       let _, xs = Owl_ode.Ode.odeint (module Owl_ode.Native.D.RK4) f x0 tspec () in
@@ -66,15 +66,7 @@ let generate_from_long ?(sigma = 10.) ?(rho = 28.) ?(beta = 8. /. 3.) ~n_steps n
   let dt = 0.01 in
   let duration = Float.(dt * of_int Int.(tt - 1)) in
   let tspec = Owl_ode.Types.(T1 { t0 = 0.; duration; dt }) in
-  let f x _ =
-    let x = Mat.get x 0 0
-    and y = Mat.get x 0 1
-    and z = Mat.get x 0 2 in
-    let xdot = sigma *. (y -. x)
-    and ydot = (x *. (rho -. z)) -. y
-    and zdot = (x *. y) -. (beta *. z) in
-    Mat.(of_array [| xdot; ydot; zdot |] 1 3)
-  in
+  let f = lorenz_flow ~sigma ~rho ~beta in
   let x0 = Mat.gaussian 1 3 in
   let _, xs = Owl_ode.Ode.odeint (module Owl_ode.Native.D.RK4) f x0 tspec () in
   let all = Arr.reshape xs [| 100 * n_trials; n_steps; 3 |] in
@@ -93,14 +85,6 @@ let continue_from ?(sigma = 10.) ?(rho = 28.) ?(beta = 8. /. 3.) ~n_steps x0 =
   let dt = 0.01 in
   let duration = Float.(dt * of_int Int.(tt - 1)) in
   let tspec = Owl_ode.Types.(T1 { t0 = 0.; duration; dt }) in
-  let f x _ =
-    let x = Mat.get x 0 0
-    and y = Mat.get x 0 1
-    and z = Mat.get x 0 2 in
-    let xdot = sigma *. (y -. x)
-    and ydot = (x *. (rho -. z)) -. y
-    and zdot = (x *. y) -. (beta *. z) in
-    Mat.(of_array [| xdot; ydot; zdot |] 1 3)
-  in
+  let f = lorenz_flow ~sigma ~rho ~beta in
   let _, xs = Owl_ode.Ode.odeint (module Owl_ode.Native.D.RK4) f x0 tspec () in
   Arr.reshape xs [| n_steps; 3 |]

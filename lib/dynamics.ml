@@ -220,10 +220,10 @@ struct
     }
 
 
-  let default_regularizer ~prms =
+  let default_regularizer ?(lambda = 1.) prms =
     let uh = extract prms.uh in
     let uf = extract prms.uf in
-    let z = Float.(1. / of_int Int.(n * n)) in
+    let z = Float.(lambda / of_int Int.(n * n)) in
     AD.Maths.(F z * (l2norm_sqr' uh + l2norm_sqr' uf))
 
 
@@ -323,10 +323,11 @@ struct
     ; uf = set (AD.Mat.zeros n n)
     }
 
-  let default_regularizer ~prms =
+
+  let default_regularizer ?(lambda = 1.) prms =
     let uh = extract prms.uh in
     let uf = extract prms.uf in
-    let z = Float.(1. / of_int Int.(n * n)) in
+    let z = Float.(lambda / of_int Int.(n * n)) in
     AD.Maths.(F z * (l2norm_sqr' uh + l2norm_sqr' uf))
 
 
