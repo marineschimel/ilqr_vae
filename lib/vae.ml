@@ -131,7 +131,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
                 let prefix = Printf.sprintf "%s_%i" prefix kk in
                 let prms = P.unpack handle (AD.pack_arr theta) in
                 Misc.save_bin ~out:(prefix ^ ".params.bin") prms;
-                P.save_to_files ~prefix ~prms);
+                P.save_to_files ~prefix prms);
               if Int.((iter - 1) % loss_every) = 0
               then (
                 Stdio.printf "\r[%05i] %.4f%!" iter current_loss;
@@ -151,7 +151,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
     (* save the parameters *)
     C.root_perform (fun () ->
         Misc.save_bin ~out:(file "params.bin") prms;
-        P.save_to_files ~prefix ~prms);
+        P.save_to_files ~prefix prms);
     (* save inference results *)
     let results =
       Array.map data ~f:(fun d ->
