@@ -13,8 +13,9 @@ val o : (_, 'o) t -> 'o
 val reset_ids : ('d, 'o) t Array.t -> ('d, 'o) t Array.t
 
 val save
-  :  ?prefix:String.t
-  -> (?prefix:String.t -> 'o -> unit)
+  :  ?zip:bool
+  -> ?prefix:String.t
+  -> (?zip:bool -> ?prefix:String.t -> 'o -> unit)
   -> (_, 'o) t Array.t
   -> unit
 

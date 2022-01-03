@@ -9,8 +9,11 @@ struct
   type output_t = AD.t
   type output = AD.t
 
-  let save_output ?prefix o =
-    Mat.save_txt ~out:(Owl_parameters.with_prefix ?prefix Label.label) (AD.unpack_arr o)
+  let save_output ?zip ?prefix o =
+    Misc.save_mat
+      ?zip
+      ~out:(Owl_parameters.with_prefix ?prefix Label.label)
+      (AD.unpack_arr o)
 
 
   let output_slice ~k o = AD.Maths.get_slice [ [ k ] ] o
@@ -325,9 +328,9 @@ module Pair (L1 : T) (L2 : T) = struct
     L1.n
 
 
-  let save_output ?prefix o =
-    L1.save_output ?prefix o.fst;
-    L2.save_output ?prefix o.snd
+  let save_output ?zip ?prefix o =
+    L1.save_output ?zip ?prefix o.fst;
+    L2.save_output ?zip ?prefix o.snd
 
 
   let output_slice ~k o =

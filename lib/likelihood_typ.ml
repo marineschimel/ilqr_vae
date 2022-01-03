@@ -16,7 +16,7 @@ module type T = sig
   val n : int
   val requires_linesearch : bool
   val label : string
-  val save_output : ?prefix:string -> output -> unit
+  val save_output : ?zip:bool -> ?prefix:string -> output -> unit
   val output_slice : k:int -> output -> output_t
   val numel : output -> int
   val stats : output Array.t -> output * output

@@ -26,17 +26,16 @@ let z x = Option.value_exn x.z
 let o x = x.o.o
 let reset_ids x = Array.mapi x ~f:(fun i xi -> { xi with id = i })
 
-let save ?prefix save_o data =
+let save ?zip ?prefix save_o data =
   Array.iter data ~f:(fun d ->
       let with_prefix s =
         match prefix with
         | None -> s
         | Some p -> sprintf "%s.%s.%i" p s d.id
       in
-      let open Owl in
-      Option.iter d.u ~f:(fun u -> Mat.save_txt ~out:(with_prefix "u") (AD.unpack_arr u));
-      Option.iter d.z ~f:(fun z -> Mat.save_txt ~out:(with_prefix "z") (AD.unpack_arr z));
-      save_o ?prefix:(Some (with_prefix "o")) d.o.o)
+      Option.iter d.u ~f:(fun u -> Misc.save_mat ?zip ~out:(with_prefix "u") (AD.unpack_arr u));
+      Option.iter d.z ~f:(fun z -> Misc.save_mat ?zip ~out:(with_prefix "z") (AD.unpack_arr z));
+      save_o ?zip ?prefix:(Some (with_prefix "o")) d.o.o)
 
 
 let distribute x =

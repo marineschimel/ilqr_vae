@@ -57,6 +57,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
       ?mini_batch
       ?max_iter
       ?save_progress_to
+      ?(zip=false)
       ?in_each_iteration
       ?learning_rate
       ?regularizer
@@ -131,7 +132,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
                 let prefix = Printf.sprintf "%s_%i" prefix kk in
                 let prms = P.unpack handle (AD.pack_arr theta) in
                 Misc.save_bin ~out:(prefix ^ ".params.bin") prms;
-                P.save_to_files ~prefix prms);
+                P.save_to_files ~zip ~prefix prms);
               if Int.((iter - 1) % loss_every) = 0
               then (
                 Stdio.printf "\r[%05i] %.4f%!" iter current_loss;
@@ -145,13 +146,13 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
     theta |> AD.pack_arr |> P.unpack handle
 
 
-  let save_results ~prefix ~prms data =
+  let save_results ?(zip=false) ~prefix ~prms data =
     let prms = C.broadcast prms in
     let file s = prefix ^ "." ^ s in
     (* save the parameters *)
     C.root_perform (fun () ->
         Misc.save_bin ~out:(file "params.bin") prms;
-        P.save_to_files ~prefix prms);
+        P.save_to_files ~zip ~prefix prms);
     (* save inference results *)
     let results =
       Array.map data ~f:(fun d ->
@@ -176,6 +177,6 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
           let var = Data.pack ~id o_var |> Data.fill ~u:u_var ~z:z_var in
           mean, var)
     in
-    Data.save ~prefix:(file "mean") G.L.save_output (Array.map results ~f:fst);
-    Data.save ~prefix:(file "var") G.L.save_output (Array.map results ~f:snd)
+    Data.save ~zip ~prefix:(file "mean") G.L.save_output (Array.map results ~f:fst);
+    Data.save ~zip ~prefix:(file "var") G.L.save_output (Array.map results ~f:snd)
 end

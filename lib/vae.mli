@@ -28,6 +28,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) : sig
     -> ?mini_batch:int
     -> ?max_iter:int
     -> ?save_progress_to:int * int * string
+    -> ?zip:bool
     -> ?in_each_iteration:(prms:p -> int -> unit)
     -> ?learning_rate:[ `constant of float | `of_iter of int -> float ]
     -> ?regularizer:(prms:p -> AD.t)
@@ -36,7 +37,8 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) : sig
     -> p
 
   val save_results
-    :  prefix:String.t
+    :  ?zip:bool
+    -> prefix:String.t
     -> prms:P.p
     -> ([> `o ], G.L.output) Data.t Array.t
     -> unit
