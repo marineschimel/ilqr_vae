@@ -57,7 +57,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
       ?mini_batch
       ?max_iter
       ?save_progress_to
-      ?(zip=false)
+      ?(zip = false)
       ?in_each_iteration
       ?learning_rate
       ?regularizer
@@ -85,38 +85,38 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
       let n_posterior_samples = n_posterior_samples k in
       (* do a quick pass through the data to work out the problem size;
       we need this to normalise the loss independently of the regularizer *)
-      let total_size =
-        Array.fold data_batch ~init:0 ~f:(fun accu datai ->
-            Int.(accu + G.L.numel (Data.o datai)))
-      in
-      let loss, g =
+      let count, loss, loss_grad =
         Array.foldi
           data_batch
-          ~init:(0., Arr.(zeros (shape theta)))
-          ~f:(fun i (accu_loss, accu_g) datai ->
+          ~init:(0, 0., Arr.(zeros (shape theta)))
+          ~f:(fun i (accu_count, accu_loss, accu_g) datai ->
             try
               let open AD in
+              let size = G.L.numel (Data.o datai) in
               let theta = make_reverse (Arr (Owl.Mat.copy theta)) (AD.tag ()) in
               let prms = P.unpack handle theta in
               let elbo = elbo ~prms ~n_posterior_samples datai in
-              let loss = AD.Maths.(neg elbo / F Float.(of_int total_size)) in
+              let loss = AD.Maths.(neg elbo / F Float.(of_int size)) in
               (* optionally add regularizer *)
               let loss =
                 Option.value_map regularizer ~default:loss ~f:(fun r ->
                     AD.Maths.(loss + r ~prms))
               in
               reverse_prop (F 1.) loss;
-              accu_loss +. unpack_flt loss, Owl.Mat.(accu_g + unpack_arr (adjval theta))
+              ( accu_count + 1
+              , accu_loss +. unpack_flt loss
+              , Owl.Mat.(accu_g + unpack_arr (adjval theta)) )
             with
-            | e ->
+            | _ ->
               Stdio.printf "Trial %i on node %i failed with some exception." i C.rank;
-              raise e
-            (*  accu_loss, accu_g *))
+              accu_count, accu_loss, accu_g)
       in
-      let loss = Mpi.reduce_float loss Mpi.Float_sum 0 Mpi.comm_world in
-      Mpi.reduce_bigarray g gradient Mpi.Sum 0 Mpi.comm_world;
-      Mat.div_scalar_ gradient Float.(of_int C.n_nodes);
-      Float.(loss / of_int C.n_nodes)
+      (* normalise by the non-failed trial count *)
+      let total_count = Mpi.reduce_int count Mpi.Int_sum 0 Mpi.comm_world in
+      let total_loss = Mpi.reduce_float loss Mpi.Float_sum 0 Mpi.comm_world in
+      Mpi.reduce_bigarray loss_grad gradient Mpi.Sum 0 Mpi.comm_world;
+      Mat.div_scalar_ gradient Float.(of_int total_count);
+      Float.(total_loss / of_int total_count)
     in
     let stop iter current_loss =
       (* optionally do something based on the parameters in each iteration *)
@@ -146,7 +146,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
     theta |> AD.pack_arr |> P.unpack handle
 
 
-  let save_results ?(zip=false) ~prefix ~prms data =
+  let save_results ?(zip = false) ~prefix ~prms data =
     let prms = C.broadcast prms in
     let file s = prefix ^ "." ^ s in
     (* save the parameters *)
