@@ -126,7 +126,7 @@ module ILQR (U : Prior_T) (D : Dynamics_T) (L : Likelihood_T) = struct
         cprev := c;
         (* Stdio.printf "\n loss %f || Iter %i \n%!" c _k; *)
         (if Float.(pct_change < conv_threshold) then nprev := Float.(of_int _k));
-        Float.(pct_change < conv_threshold)
+        Float.(pct_change < conv_threshold || Int.(_k > 10))
     in
     let us =
       match u_init with
