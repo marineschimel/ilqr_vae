@@ -1,5 +1,5 @@
 (executables
- (names lorenz lorenz_analysis)
+ (names nlb toy_monkey lorenz lorenz_analysis)
  (libraries cmdargs ilqr_vae owl-ode)
  (preprocess
   (pps ppx_accessor)))
