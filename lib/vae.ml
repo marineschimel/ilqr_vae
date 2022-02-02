@@ -112,9 +112,9 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
               accu_count, accu_loss, accu_g)
       in
       (* normalise by the non-failed trial count *)
-      let total_count = Mpi.reduce_int count Mpi.Int_sum 0 Mpi.comm_world in
-      let total_loss = Mpi.reduce_float loss Mpi.Float_sum 0 Mpi.comm_world in
-      Mpi.reduce_bigarray loss_grad gradient Mpi.Sum 0 Mpi.comm_world;
+      let total_count = C.reduce_sum_int count in
+      let total_loss = C.reduce_sum_float loss in
+      C.reduce_sum_bigarray loss_grad gradient;
       Mat.div_scalar_ gradient Float.(of_int total_count);
       Float.(total_loss / of_int total_count)
     in
