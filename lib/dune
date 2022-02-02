@@ -1,6 +1,6 @@
 (library
  (name ilqr_vae)
- (public_name ilqr_vae)
+ (public_name ilqr_vae_no_mpi)
  (libraries base camlzip owl owl-parameters adam dilqr comm_no_mpi accessor)
  (preprocess
   (pps ppx_accessor)))
