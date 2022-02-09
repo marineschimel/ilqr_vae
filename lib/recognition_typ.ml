@@ -4,7 +4,12 @@ module type T = sig
   module G : Generative.T
   module P : Owl_parameters.T
 
-  val posterior_mean : ?gen_prms:G.P.p -> P.p -> ([> `o ], G.L.output) Data.t -> AD.t
+  val posterior_mean
+    :  ?gen_prms:G.P.p
+    -> P.p
+    -> ([> `o ], G.L.output) Data.t
+    -> AD.t * AD.t list
+
   val posterior_cov_sample : ?gen_prms:G.P.p -> P.p -> n_samples:int -> AD.t
   val entropy : ?gen_prms:G.P.p -> P.p -> AD.t
 end

@@ -383,3 +383,165 @@ struct
             let f = sigma f_pre in
             AD.Maths.(wh * f)))
 end
+
+module Mini_GRU_IO (X : sig
+  include Dims_T
+
+  val phi : AD.t -> AD.t
+  val d_phi : AD.t -> AD.t
+  val sigma : AD.t -> AD.t
+  val d_sigma : AD.t -> AD.t
+end) =
+struct
+  module P = Owl_parameters.Make (Mini_GRU_IO_P)
+  open Mini_GRU_IO_P
+  open X
+
+  let n = X.n
+  let m = X.m
+  let n_beg, wrapper = wrapper ~n ~m
+  let requires_linesearch = true
+
+  let init ?(radius = 0.1) (set : Owl_parameters.setter) =
+    (*h = size 1xN
+     x = size 1xN (x = Bu)
+     h = size 1xK 
+     f = size of h so 1xN
+     Wf = NxN
+     B = MxN *)
+    let sigma = Float.(radius / sqrt (of_int X.n)) in
+    { wh = set (AD.Mat.gaussian ~sigma X.n X.n)
+    ; bh = set (AD.Mat.zeros 1 X.n)
+    ; uh = set (AD.Mat.gaussian ~sigma X.n X.n)
+    ; uf = set (AD.Mat.gaussian ~sigma:0. X.n X.n)
+    ; b = Some (set (AD.Mat.gaussian ~sigma:Float.(1. / sqrt (of_int X.m)) X.m X.n))
+    }
+
+
+  let b_rescaled ~prms =
+    Option.map prms.b ~f:(function b ->
+        let b = Owl_parameters.extract b in
+        b)
+
+
+  let default_regularizer ?(lambda = 1.) prms =
+    let uh = extract prms.uh in
+    let uf = extract prms.uf in
+    let z = Float.(lambda / of_int Int.(n * n)) in
+    AD.Maths.(F z * (l2norm_sqr' uh + l2norm_sqr' uf))
+
+
+  let generate_bs ~n ~m =
+    let nb = n_beg in
+    let nr = n / nb in
+    let _ = assert (nr >= m) in
+    Array.init nb ~f:(fun i ->
+        let inr = i * m in
+        let rnr = n - ((i + 1) * m) in
+        AD.Maths.(
+          transpose
+            (concatenate
+               ~axis:0
+               [| AD.Mat.zeros inr m; AD.Mat.eye m; AD.Mat.zeros rnr m |])))
+
+
+  let u_eff ~prms =
+    match b_rescaled ~prms with
+    | None -> fun u -> u
+    | Some b -> fun u -> AD.Maths.(u *@ b)
+
+
+  let dyn ~theta =
+    let wh = Owl_parameters.extract theta.wh in
+    let bh = Owl_parameters.extract theta.bh in
+    let uh = Owl_parameters.extract theta.uh in
+    let uf = Owl_parameters.extract theta.uf in
+    let n = AD.Mat.col_num bh in
+    let m =
+      match theta.b with
+      | None -> n
+      | Some b -> AD.Mat.row_num (Owl_parameters.extract b)
+    in
+    let beg_bs = generate_bs ~n ~m in
+    let u_eff = u_eff ~prms:theta in
+    fun ~k ~x ~u ->
+      let default =
+        let h_pred = x in
+        let x = u_eff u in
+        let f = sigma AD.Maths.(h_pred *@ uf) in
+        let h_hat =
+          let hf = AD.Maths.(h_pred * f) in
+          AD.Maths.(phi AD.Maths.(bh + (hf *@ uh)) + (x *@ wh))
+        in
+        AD.Maths.(((F 1. - f) * h_pred) + (f * h_hat))
+      in
+      if Int.(n_beg = 1)
+      then default
+      else if Int.(k < n_beg)
+      then AD.Maths.(x + (u *@ beg_bs.(k)))
+      else default
+
+
+  let dyn_x =
+    let _dyn_x ~theta =
+      let wh = Owl_parameters.extract theta.wh in
+      let bh = Owl_parameters.extract theta.bh in
+      let uh = Owl_parameters.extract theta.uh in
+      let uf = Owl_parameters.extract theta.uf in
+      let u_eff = u_eff ~prms:theta in
+      let n = AD.Mat.col_num bh in
+      fun ~k ~x ~u ->
+        let default =
+          let h_pred = x in
+          let x = u_eff u in
+          let f_pre = AD.Maths.(h_pred *@ uf) in
+          let f = sigma f_pre in
+          let h_hat_pre =
+            let hf = AD.Maths.(h_pred * f) in
+            AD.Maths.(bh + (hf *@ uh))
+          in
+          let h_hat = AD.Maths.(phi h_hat_pre + (x *@ wh)) in
+          AD.Maths.(
+            diagm (F 1. - f)
+            - (uf * ((h_pred - h_hat) * d_sigma f_pre))
+            + (((transpose f * uh) + (uf *@ (transpose (h_pred * d_sigma f_pre) * uh)))
+              * (f * d_phi h_hat_pre)))
+        in
+        if Int.(n_beg = 1)
+        then default
+        else if Int.(k < n_beg)
+        then AD.Mat.eye n
+        else default
+    in
+    (* still wrong... maybe some transposes somewhere? need to check the side of the diagm + the u transposes again... *)
+    Some _dyn_x
+
+
+  let dyn_u =
+    let _dyn_u ~theta =
+      let wh = Owl_parameters.extract theta.wh in
+      let bh = Owl_parameters.extract theta.bh in
+      let uf = Owl_parameters.extract theta.uf in
+      let b =
+        match b_rescaled ~prms:theta with
+        | None -> AD.Mat.eye (AD.Mat.col_num bh)
+        | Some b -> b
+      in
+      let m = AD.Mat.row_num b in
+      let n = AD.Mat.col_num bh in
+      let beg_bs = generate_bs ~n ~m in
+      fun ~k ~x ~u:_ ->
+        let default =
+          let h_pred = x in
+          let f_pre = AD.Maths.(h_pred *@ uf) in
+          let f = sigma f_pre in
+          AD.Maths.(b *@ (wh * f))
+        in
+        if Int.(n_beg = 1)
+        then default
+        else if Int.(k < n_beg)
+        then beg_bs.(k)
+        else default
+    in
+    Some _dyn_u
+end

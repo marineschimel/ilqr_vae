@@ -11,7 +11,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
   let init g r = { generative = g; recognition = r }
 
   let posterior_predictive_sample ?(id = 0) ?(pre = true) ~(prms : P.p) data =
-    let u_mean = R.posterior_mean ~gen_prms:prms.generative prms.recognition data in
+    let u_mean, _ = R.posterior_mean ~gen_prms:prms.generative prms.recognition data in
     let u_cov_sample =
       R.posterior_cov_sample ~gen_prms:prms.generative prms.recognition
     in
@@ -41,7 +41,8 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
       let norm_const = Float.(1. / of_int n_posterior_samples) in
       fun data ->
         let samples =
-          AD.Maths.(AD.expand_to_3d (mu data) + sample_cov ~n_samples:n_posterior_samples)
+          let m, _ = mu data in
+          AD.Maths.(AD.expand_to_3d m + sample_cov ~n_samples:n_posterior_samples)
         in
         let z = integrate ~u:samples in
         let z = AD.Maths.get_slice [ []; [ G.n_beg - 1; -1 ]; [ 0; G.n - 1 ] ] z in
@@ -49,6 +50,29 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
         AD.Maths.((log_prior samples + log_likelihood data) * AD.F norm_const)
     in
     fun data -> AD.Maths.(h + log_joint data)
+
+
+  let predictions ?(fut = 0) ~(prms : P.p) ~n_samples dat_trial =
+    let u_mean, _ =
+      R.posterior_mean ~gen_prms:prms.generative prms.recognition dat_trial
+    in
+    let u =
+      AD.Maths.(
+        u_mean
+        + R.posterior_cov_sample ~gen_prms:prms.generative prms.recognition ~n_samples)
+    in
+    let shp = AD.shape u in
+    let u =
+      if fut > 0
+      then (
+        let _ = shp.(1) <- fut in
+        AD.Maths.concatenate ~axis:1 [| u; AD.Arr.zeros shp |])
+      else u
+    in
+    let zs = G.integrate ~prms:prms.generative ~u in
+    (*this is of size n_samples x n-steps x n_output *)
+    let remove_n_beg = AD.Maths.get_slice [ []; [ G.n_beg - 1; -1 ] ] in
+    remove_n_beg u_mean, remove_n_beg u, remove_n_beg zs
 
 
   (* NOTE: each node has its own local data -- this must be distributed upstream using e.g. C.scatter *)

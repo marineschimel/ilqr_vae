@@ -21,6 +21,13 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) : sig
     -> ([ `o ], G.L.output) Data.t
     -> AD.t * (int -> ([ `o | `uz ], G.L.output) Data.t Array.t)
 
+  val predictions
+    :  ?fut:int
+    -> prms:P.p
+    -> n_samples:int
+    -> ([ `o | `uzt ], G.L.output) Data.t
+    -> AD.t * AD.t * AD.t
+
   val elbo : prms:P.p -> n_posterior_samples:int -> ([> `o ], G.L.output) Data.t -> AD.t
 
   val train

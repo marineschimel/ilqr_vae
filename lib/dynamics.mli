@@ -56,3 +56,17 @@ end) : sig
   val init : Owl_parameters.setter -> P.p
   val default_regularizer : ?lambda:float -> P.p -> AD.t
 end
+
+module Mini_GRU_IO (X : sig
+  include Dims_T
+
+  val phi : AD.t -> AD.t
+  val d_phi : AD.t -> AD.t
+  val sigma : AD.t -> AD.t
+  val d_sigma : AD.t -> AD.t
+end) : sig
+  include T with type 'a P.prm = 'a Mini_GRU_IO_P.prm
+
+  val init : ?radius:float -> Owl_parameters.setter -> P.p
+  val default_regularizer : ?lambda:float -> P.p -> AD.t
+end

@@ -167,7 +167,7 @@ struct
         u0        u1  u2 ......   uT
         x0 = 0    x1  x2 ......   xT xT+1
     *)
-    let tau =
+    let tau, all_us =
       IP.ilqr
         ~linesearch
         ~stop:(stop_ilqr IP.loss ~prms)
@@ -176,6 +176,11 @@ struct
         ~theta:prms
         ()
     in
+    let all_us =
+      List.map all_us ~f:(fun x ->
+          let a = Array.of_list x in
+          AD.Maths.concatenate ~axis:0 a)
+    in
     let tau = AD.Maths.reshape tau [| n_steps_total + 1; n + m |] in
     let u = AD.Maths.get_slice [ [ 0; -2 ]; [ n; -1 ] ] tau in
     (* cache the solution for potential later reuse as initial condition *)
@@ -183,7 +188,7 @@ struct
     then (
       Hashtbl.remove store hash;
       Hashtbl.add_exn store ~key:hash ~data:(AD.unpack_arr u));
-    u
+    u, all_us
 
 
   (* TODO: still have to implement re-use of [u_init] in this new functor interface... *)
