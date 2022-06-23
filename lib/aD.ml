@@ -23,13 +23,23 @@ let print_shape ~label x =
   |> Stdio.printf "[%s] shape = %s\n%!" label
 
 
-let expand0 x = Maths.reshape x (Array.append [| 1 |] (shape x))
-
-let squeeze0 x =
+let expand_to_3d x =
   let s = shape x in
-  assert (s.(0) = 1);
-  assert (Array.length s = 3);
-  Maths.reshape x [| s.(1); s.(2) |]
+  if Array.length s = 3
+  then x
+  else (
+    assert (Array.length s = 2);
+    Maths.reshape x (Array.append [| 1 |] s))
+
+
+let squeeze_from_3d x =
+  let s = shape x in
+  if Array.length s = 2
+  then x
+  else (
+    assert (s.(0) = 1);
+    assert (Array.length s = 3);
+    Maths.reshape x [| s.(1); s.(2) |])
 
 
 let rec requad x = Caml.Lazy.force _requad x

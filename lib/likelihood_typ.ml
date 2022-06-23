@@ -1,25 +1,31 @@
 open Base
 open Owl_parameters
 
-module type Likelihood_T = sig
+module type Dims_T = sig
+  val n : int
+  val n_output : int
+end
+
+module type T = sig
   module P : Owl_parameters.T
   open P
 
-  type datum
-  type data
+  type output_t
+  type output
 
+  val n : int
   val requires_linesearch : bool
   val label : string
-  val save_data : ?prefix:string -> data -> unit
-  val data_slice : k:int -> data -> datum
-  val to_mat_list : data -> (string * AD.t) list
-  val size : prms:p -> int
-  val pre_sample : prms:p -> z:AD.t -> data
-  val sample : prms:p -> z:AD.t -> data
-  val neg_logp_t : prms:p -> data_t:datum -> k:int -> z_t:AD.t -> AD.t
-  val neg_jac_t : (prms:p -> data_t:datum -> k:int -> z_t:AD.t -> AD.t) option
-  val neg_hess_t : (prms:p -> data_t:datum -> k:int -> z_t:AD.t -> AD.t) option
-  val logp : prms:p -> data:data -> z:AD.t -> AD.t
+  val save_output : ?zip:bool -> ?prefix:string -> output -> unit
+  val output_slice : k:int -> output -> output_t
+  val numel : output -> int
+  val stats : output Array.t -> output * output
+  val pre_sample : prms:p -> z:AD.t -> output
+  val sample : prms:p -> z:AD.t -> output
+  val neg_logp_t : prms:p -> o_t:output_t -> k:int -> z_t:AD.t -> AD.t
+  val neg_jac_t : (prms:p -> o_t:output_t -> k:int -> z_t:AD.t -> AD.t) option
+  val neg_hess_t : (prms:p -> o_t:output_t -> k:int -> z_t:AD.t -> AD.t) option
+  val logp : prms:p -> o:output -> z:AD.t -> AD.t
 end
 
 module Gaussian_P = struct
