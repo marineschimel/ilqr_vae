@@ -1,6 +1,6 @@
 open Owl_parameters
 
-module Covariance_P = struct
+module P = struct
   type 'a prm =
     { d : 'a
     ; t : 'a
