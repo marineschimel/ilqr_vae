@@ -19,10 +19,10 @@ module Make (U : Prior.T) (D : Dynamics.T) (L : Likelihood.T) = struct
     n / m
 
 
-  let integrate ~prms ~u = Integrate.integrate ~prms:prms.dynamics ~u
+  let integrate ~prms ~ext_u ~u = Integrate.integrate ~prms:prms.dynamics ~ext_u ~u
 
-  let sample ~prms ?(id = 0) ?(pre = false) =
-    let integrate = integrate ~prms in
+  let sample ~prms ~ext_u ?(id = 0) ?(pre = false) =
+    let integrate = integrate ~prms ~ext_u in
     fun u ->
       let u =
         match u with

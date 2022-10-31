@@ -4,6 +4,7 @@ open Base
 type 'o output =
   { hash : string (* unique hash -- useful e.g. to recycle u in iLQR *)
   ; o : 'o
+  ; ext_u : AD.t Option.t
   }
 
 type (_, 'o) t =
@@ -13,15 +14,17 @@ type (_, 'o) t =
   ; o : 'o output
   }
 
-let pack ?(id = 0) o =
+let pack ?(id = 0) ?(ext_u = None) o =
   let hash = String.of_char_list (List.init 10 ~f:(fun _ -> Random.char ())) in
-  { id; u = None; z = None; o = { hash; o } }
+  { id; u = None; z = None; o = { hash; o; ext_u } }
 
 
 let fill ~u ~z x = { x with u = Some u; z = Some z }
 let hash x = x.o.hash
 let id x = x.id
-let u x = Option.value_exn x.u
+let u x = x.u
+let u_ext x = x.o.ext_u
+let u_exn x = Option.value_exn x.u
 let z x = Option.value_exn x.z
 let o x = x.o.o
 let reset_ids x = Array.mapi x ~f:(fun i xi -> { xi with id = i })
@@ -33,8 +36,10 @@ let save ?zip ?prefix save_o data =
         | None -> s
         | Some p -> sprintf "%s.%s.%i" p s d.id
       in
-      Option.iter d.u ~f:(fun u -> Misc.save_mat ?zip ~out:(with_prefix "u") (AD.unpack_arr u));
-      Option.iter d.z ~f:(fun z -> Misc.save_mat ?zip ~out:(with_prefix "z") (AD.unpack_arr z));
+      Option.iter d.u ~f:(fun u ->
+          Misc.save_mat ?zip ~out:(with_prefix "u") (AD.unpack_arr u));
+      Option.iter d.z ~f:(fun z ->
+          Misc.save_mat ?zip ~out:(with_prefix "z") (AD.unpack_arr z));
       save_o ?zip ?prefix:(Some (with_prefix "o")) d.o.o)
 
 
