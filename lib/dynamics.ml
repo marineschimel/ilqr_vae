@@ -4,8 +4,8 @@ open Owl_parameters
 include Dynamics_typ
 
 module Integrate (D : T) = struct
-  let integrate ~prms =
-    let dyn_k = D.dyn ~theta:prms in
+  let integrate ~prms ~ext_u =
+    let dyn_k = D.dyn ~theta:prms ~ext_u in
     let n = D.n in
     fun ~u ->
       (* assume u is n_samples x n_steps x m *)
@@ -70,6 +70,61 @@ let wrapper ~n ~m =
       b, u_eff, dyn_wrap, dyn_x_wrap, dyn_u_wrap )
 
 
+module Nonlinear (X : sig
+  include Dims_T
+
+  val phi : [ `linear | `nonlinear of (AD.t -> AD.t) * (AD.t -> AD.t) ]
+end) =
+struct
+  module P = Owl_parameters.Make (Nonlinear_Init_P)
+  open Nonlinear_Init_P
+  open X
+
+  let n = X.n
+  and m = X.m
+
+  let n_beg, wrapper = wrapper ~n ~m
+
+  let phi, d_phi, requires_linesearch =
+    match phi with
+    | `linear -> (fun x -> x), (fun x -> AD.Arr.(ones (shape x))), false
+    | `nonlinear (f, df) -> f, df, true
+
+
+  let init ?(radius = 0.1) (set : Owl_parameters.setter) =
+    let sigma = Float.(radius / sqrt (of_int n)) in
+    { a = set (AD.Mat.gaussian ~sigma n n)
+    ; bias = set (AD.Mat.zeros 1 n)
+    ; b =
+        (if n = m
+        then None
+        else Some (set (AD.Mat.gaussian ~sigma:Float.(1. / sqrt (of_int m)) m n)))
+    }
+
+
+  let dyn ~theta ~ext_u =
+    match ext_u with |Some ext_u ->
+    let _, u_eff, dyn_wrap, _, _ = wrapper theta.b in
+    let a = extract theta.a in
+    let bias = extract theta.bias in
+    dyn_wrap (fun ~k:_ ~x ~u -> AD.Maths.((phi x *@ a) + u_eff u + bias + ))
+
+
+  let dyn_x =
+    Some
+      (fun ~theta ->
+        let _, _, _, dyn_x_wrap, _ = wrapper theta.b in
+        let a = extract theta.a in
+        dyn_x_wrap (fun ~k:_ ~x ~u:_ -> AD.Maths.(transpose (d_phi x) * a)))
+
+
+  let dyn_u =
+    Some
+      (fun ~theta ->
+        let b, _, _, _, dyn_u_wrap = wrapper theta.b in
+        dyn_u_wrap (fun ~k:_ ~x:_ ~u:_ -> b))
+end
+(* 
 module Linear (Dims : Dims_T) = struct
   module P = Owl_parameters.Make (Linear_P)
   open Linear_P
@@ -382,4 +437,4 @@ struct
             let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
             let f = sigma f_pre in
             AD.Maths.(wh * f)))
-end
+end *)

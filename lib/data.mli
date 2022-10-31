@@ -10,6 +10,7 @@ val id : (_, 'o) t -> int
 val u : ([> `uz ], 'o) t -> AD.t
 val z : ([> `uz ], 'o) t -> AD.t
 val o : (_, 'o) t -> 'o
+val u_ext : (_, 'o) t -> AD.t option
 val reset_ids : ('d, 'o) t Array.t -> ('d, 'o) t Array.t
 
 val save

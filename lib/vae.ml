@@ -15,10 +15,10 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
     let u_cov_sample =
       R.posterior_cov_sample ~gen_prms:prms.generative prms.recognition
     in
-    let sample = G.sample ~prms:prms.generative in
+    let sample = G.sample ~prms:prms.generative ~ext_u:(Data.u_ext data) in
     ( u_mean
     , fun n_samples ->
-        let u = AD.Maths.(u_mean + u_cov_sample ~n_samples) in
+        let u = AD.Maths.(u_mean + u_cov_sample ~n_samples data) in
         Array.init n_samples ~f:(fun k ->
             let u = AD.Maths.(reshape (get_slice [ [ k ] ] u) [| -1; G.m |]) in
             let data = sample ~id ~pre (`some u) in
@@ -41,14 +41,15 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
       let norm_const = Float.(1. / of_int n_posterior_samples) in
       fun data ->
         let samples =
-          AD.Maths.(AD.expand_to_3d (mu data) + sample_cov ~n_samples:n_posterior_samples)
+          AD.Maths.(
+            AD.expand_to_3d (mu data) + sample_cov ~n_samples:n_posterior_samples data)
         in
-        let z = integrate ~u:samples in
+        let z = integrate ~ext_u:(Data.u_ext data) ~u:samples in
         let z = AD.Maths.get_slice [ []; [ G.n_beg - 1; -1 ]; [ 0; G.n - 1 ] ] z in
         let data = Data.fill data ~u:samples ~z in
         AD.Maths.((log_prior samples + log_likelihood data) * AD.F norm_const)
     in
-    fun data -> AD.Maths.(h + log_joint data)
+    fun data -> AD.Maths.(h data + log_joint data)
 
 
   (* NOTE: each node has its own local data -- this must be distributed upstream using e.g. C.scatter *)

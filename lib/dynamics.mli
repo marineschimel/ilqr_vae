@@ -1,7 +1,7 @@
 include module type of Dynamics_typ
 
 module Integrate (D : T) : sig
-  val integrate : prms:D.P.p -> u:AD.t -> AD.t
+  val integrate : prms:D.P.p -> ext_u:AD.t option -> u:AD.t -> AD.t
 end
 
 module Linear (Dims : Dims_T) : sig

@@ -13,12 +13,13 @@ module type T = sig
   module L : Likelihood.T
   module P : Owl_parameters.T
 
-  val integrate : prms:P.p -> u:AD.t -> AD.t
+  val integrate : prms:P.p -> ext_u:AD.t option -> u:AD.t -> AD.t
 
   (** Samples the generative model; samples [u] from the prior unless [u] is supplied.
       Uses [L.sample] by default, unless [pre=true] in which case [L.pre_sample] is used instead *)
   val sample
     :  prms:P.p
+    -> ext_u:AD.t option
     -> ?id:int
     -> ?pre:bool
     -> [ `prior of int | `some of AD.t ]
