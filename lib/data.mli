@@ -3,7 +3,7 @@ open Base
 type 'o output
 type (_, 'o) t
 
-val pack : ?id:int -> 'o -> ([ `o ], 'o) t
+val pack : ?id:int -> ?ext_u:AD.t option -> 'o -> ([ `o ], 'o) t
 val fill : u:AD.t -> z:AD.t -> ([> `o ], 'o) t -> ([ `o | `uz ], 'o) t
 val hash : (_, 'o) t -> String.t
 val id : (_, 'o) t -> int

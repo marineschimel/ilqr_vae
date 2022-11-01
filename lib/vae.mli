@@ -40,6 +40,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) : sig
     :  ?zip:bool
     -> prefix:String.t
     -> prms:P.p
+    -> n_to_save:int
     -> ([> `o ], G.L.output) Data.t Array.t
     -> unit
 end

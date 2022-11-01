@@ -22,9 +22,8 @@ let pack ?(id = 0) ?(ext_u = None) o =
 let fill ~u ~z x = { x with u = Some u; z = Some z }
 let hash x = x.o.hash
 let id x = x.id
-let u x = x.u
+let u x = Option.value_exn x.u
 let u_ext x = x.o.ext_u
-let u_exn x = Option.value_exn x.u
 let z x = Option.value_exn x.z
 let o x = x.o.o
 let reset_ids x = Array.mapi x ~f:(fun i xi -> { xi with id = i })

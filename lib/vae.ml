@@ -147,7 +147,7 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
     theta |> AD.pack_arr |> P.unpack handle
 
 
-  let save_results ?(zip = false) ~prefix ~prms data =
+  let save_results ?(zip = false) ~prefix ~prms ~n_to_save data =
     let prms = C.broadcast prms in
     let file s = prefix ^ "." ^ s in
     (* save the parameters *)
@@ -156,28 +156,32 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
         P.save_to_files ~zip ~prefix prms);
     (* save inference results *)
     let results =
-      Array.map data ~f:(fun d ->
+      Array.mapi data ~f:(fun i d ->
           let id = Data.id d in
-          let u_mean, f = posterior_predictive_sample ~pre:true ~prms d in
-          (* draw 100 samples from the predictive distribution *)
-          let pred = f 100 in
-          (* estimate mean and variances of u, z, and o *)
-          let mean_and_var g =
-            let tmp =
-              Array.map pred ~f:(fun d -> AD.expand_to_3d (g d))
-              |> AD.Maths.concatenate ~axis:0
-              |> AD.unpack_arr
+          let _ = Stdio.printf "|| Comp : %i %i || \n %!" i n_to_save in
+          if Int.(i < n_to_save)
+          then (
+            let u_mean, f = posterior_predictive_sample ~pre:true ~prms d in
+            (* draw 100 samples from the predictive distribution *)
+            let pred = f 100 in
+            (* estimate mean and variances of u, z, and o *)
+            let mean_and_var g =
+              let tmp =
+                Array.map pred ~f:(fun d -> AD.expand_to_3d (g d))
+                |> AD.Maths.concatenate ~axis:0
+                |> AD.unpack_arr
+              in
+              ( AD.pack_arr (Arr.mean ~keep_dims:false ~axis:0 tmp)
+              , AD.pack_arr (Arr.var ~keep_dims:false ~axis:0 tmp) )
             in
-            ( AD.pack_arr (Arr.mean ~keep_dims:false ~axis:0 tmp)
-            , AD.pack_arr (Arr.var ~keep_dims:false ~axis:0 tmp) )
-          in
-          let _, u_var = mean_and_var Data.u in
-          let z_mean, z_var = mean_and_var Data.z in
-          let o_mean, o_var = G.L.stats (Array.map pred ~f:Data.o) in
-          let mean = Data.pack ~id o_mean |> Data.fill ~u:u_mean ~z:z_mean in
-          let var = Data.pack ~id o_var |> Data.fill ~u:u_var ~z:z_var in
-          mean, var)
+            let _, u_var = mean_and_var Data.u in
+            let z_mean, z_var = mean_and_var Data.z in
+            let o_mean, o_var = G.L.stats (Array.map pred ~f:Data.o) in
+            let mean = Data.pack ~id o_mean |> Data.fill ~u:u_mean ~z:z_mean in
+            let var = Data.pack ~id o_var |> Data.fill ~u:u_var ~z:z_var in
+            Some mean, Some var)
+          else None, None)
     in
-    Data.save ~zip ~prefix:(file "mean") G.L.save_output (Array.map results ~f:fst);
-    Data.save ~zip ~prefix:(file "var") G.L.save_output (Array.map results ~f:snd)
+    Data.save ~zip ~prefix:(file "mean") G.L.save_output (Array.filter_map results ~f:fst);
+    Data.save ~zip ~prefix:(file "var") G.L.save_output (Array.filter_map results ~f:snd)
 end

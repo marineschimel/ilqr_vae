@@ -5,7 +5,7 @@ include Dynamics_typ
 
 module Integrate (D : T) = struct
   let integrate ~prms ~ext_u =
-    let dyn_k = D.dyn ~theta:prms ~ext_u in
+    let dyn_k = D.dyn ~theta:prms in
     let n = D.n in
     fun ~u ->
       (* assume u is n_samples x n_steps x m *)
@@ -26,7 +26,11 @@ module Integrate (D : T) = struct
         match us with
         | [] -> xs
         | u :: unexts ->
-          let new_x = dyn_k ~k ~x ~u in
+          let new_x =
+            match ext_u with
+            | Some eu -> dyn_k ~ext_u:(Some (AD.Maths.get_slice [ [ k ] ] eu)) ~k ~x ~u
+            | None -> dyn_k ~ext_u:None ~k ~x ~u
+          in
           dyn (k + 1) new_x (new_x :: xs) unexts
       in
       dyn 0 x0 [] us
@@ -74,10 +78,11 @@ module Nonlinear (X : sig
   include Dims_T
 
   val phi : [ `linear | `nonlinear of (AD.t -> AD.t) * (AD.t -> AD.t) ]
+  val m_ext : int
 end) =
 struct
-  module P = Owl_parameters.Make (Nonlinear_Init_P)
-  open Nonlinear_Init_P
+  module P = Owl_parameters.Make (Nonlinear_P)
+  open Nonlinear_P
   open X
 
   let n = X.n
@@ -95,6 +100,7 @@ struct
     let sigma = Float.(radius / sqrt (of_int n)) in
     { a = set (AD.Mat.gaussian ~sigma n n)
     ; bias = set (AD.Mat.zeros 1 n)
+    ; b_ext = set (AD.Mat.gaussian ~sigma:Float.(1. / sqrt (of_int X.m_ext)) n X.m_ext)
     ; b =
         (if n = m
         then None
@@ -103,16 +109,20 @@ struct
 
 
   let dyn ~theta ~ext_u =
-    match ext_u with |Some ext_u ->
     let _, u_eff, dyn_wrap, _, _ = wrapper theta.b in
     let a = extract theta.a in
+    let b_ext = extract theta.b_ext in
     let bias = extract theta.bias in
-    dyn_wrap (fun ~k:_ ~x ~u -> AD.Maths.((phi x *@ a) + u_eff u + bias + ))
+    match ext_u with
+    | Some ext_u ->
+      dyn_wrap (fun ~k:_ ~x ~u ->
+          AD.Maths.((phi x *@ a) + u_eff u + bias + transpose (b_ext *@ ext_u)))
+    | None -> dyn_wrap (fun ~k:_ ~x ~u -> AD.Maths.((phi x *@ a) + u_eff u + bias))
 
 
   let dyn_x =
     Some
-      (fun ~theta ->
+      (fun ~theta ~ext_u:_ ->
         let _, _, _, dyn_x_wrap, _ = wrapper theta.b in
         let a = extract theta.a in
         dyn_x_wrap (fun ~k:_ ~x ~u:_ -> AD.Maths.(transpose (d_phi x) * a)))
@@ -120,7 +130,7 @@ struct
 
   let dyn_u =
     Some
-      (fun ~theta ->
+      (fun ~theta ~ext_u:_ ->
         let b, _, _, _, dyn_u_wrap = wrapper theta.b in
         dyn_u_wrap (fun ~k:_ ~x:_ ~u:_ -> b))
 end

@@ -1,0 +1,10 @@
+(executables
+ (names test test_w_inputs test_w_all_inputs test_gaussian inputs_analysis)
+ (libraries cmdargs ilqr_vae)
+ (preprocess
+  (pps ppx_accessor)))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))
