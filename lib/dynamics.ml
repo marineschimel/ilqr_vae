@@ -116,7 +116,7 @@ struct
     match ext_u with
     | Some ext_u ->
       dyn_wrap (fun ~k:_ ~x ~u ->
-          AD.Maths.((phi x *@ a) + u_eff u + bias + transpose (b_ext *@ ext_u)))
+          AD.Maths.((phi x *@ a) + u_eff u + bias + transpose (b_ext *@ transpose ext_u)))
     | None -> dyn_wrap (fun ~k:_ ~x ~u -> AD.Maths.((phi x *@ a) + u_eff u + bias))
 
 
@@ -133,6 +133,100 @@ struct
       (fun ~theta ~ext_u:_ ->
         let b, _, _, _, dyn_u_wrap = wrapper theta.b in
         dyn_u_wrap (fun ~k:_ ~x:_ ~u:_ -> b))
+end
+
+(*Warning : MGU2 function not taking external inputs at the moment *)
+module MGU2 (X : sig
+  include Dims_T
+
+  val phi : AD.t -> AD.t
+  val d_phi : AD.t -> AD.t
+  val sigma : AD.t -> AD.t
+  val d_sigma : AD.t -> AD.t
+  val m_ext : int
+end) =
+struct
+  module P = Owl_parameters.Make (MGU2_P)
+  open MGU2_P
+  open X
+
+  let requires_linesearch = true
+  let n = X.n
+  let m = X.m
+  let n_beg, wrapper = wrapper ~n ~m
+
+  let init (set : Owl_parameters.setter) =
+    (* h : size 1xN
+       x : size 1xN (x = Bu)
+       h : size 1xK 
+       f : size of h so 1xN *)
+    { wh = set (AD.Mat.gaussian m n)
+    ; bh = set (AD.Mat.zeros 1 n)
+    ; bf = set (AD.Mat.zeros 1 n)
+    ; uh = set (AD.Mat.zeros n n)
+    ; uf = set (AD.Mat.zeros n n)
+    ; b_ext = set (AD.Mat.gaussian ~sigma:Float.(1. / sqrt (of_int X.m_ext)) n X.m_ext)
+    }
+
+
+  let default_regularizer ?(lambda = 1.) prms =
+    let uh = extract prms.uh in
+    let uf = extract prms.uf in
+    let z = Float.(lambda / of_int Int.(n * n)) in
+    AD.Maths.(F z * (l2norm_sqr' uh + l2norm_sqr' uf))
+
+
+  let dyn ~theta ~ext_u =
+    let wh, _, dyn_wrap, _, _ = wrapper (Some theta.wh) in
+    let bh = Owl_parameters.extract theta.bh in
+    let bf = Owl_parameters.extract theta.bf in
+    let uh = Owl_parameters.extract theta.uh in
+    let uf = Owl_parameters.extract theta.uf in
+    dyn_wrap (fun ~k:_ ~x ~u ->
+        let h_pred = x in
+        let f = sigma AD.Maths.(bf + (h_pred *@ uf)) in
+        let h_hat =
+          let hf = AD.Maths.(h_pred * f) in
+          AD.Maths.(phi AD.Maths.(bh + (hf *@ uh)) + (u *@ wh))
+        in
+        AD.Maths.(((F 1. - f) * h_pred) + (f * h_hat)))
+
+
+  let dyn_x =
+    Some
+      (fun ~theta ~ext_u ->
+        let wh, _, _, dyn_x_wrap, _ = wrapper (Some theta.wh) in
+        let bf = Owl_parameters.extract theta.bf in
+        let bh = Owl_parameters.extract theta.bh in
+        let uh = Owl_parameters.extract theta.uh in
+        let uf = Owl_parameters.extract theta.uf in
+        dyn_x_wrap (fun ~k:_ ~x ~u ->
+            let h_pred = x in
+            let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
+            let f = sigma f_pre in
+            let h_hat_pre =
+              let hf = AD.Maths.(h_pred * f) in
+              AD.Maths.(bh + (hf *@ uh))
+            in
+            let h_hat = AD.Maths.(phi h_hat_pre + (u *@ wh)) in
+            AD.Maths.(
+              diagm (F 1. - f)
+              - (uf * ((h_pred - h_hat) * d_sigma f_pre))
+              + (((transpose f * uh) + (uf *@ (transpose (h_pred * d_sigma f_pre) * uh)))
+                * (f * d_phi h_hat_pre)))))
+
+
+  let dyn_u =
+    Some
+      (fun ~theta ~ext_u ->
+        let wh, _, _, _, dyn_u_wrap = wrapper (Some theta.wh) in
+        let bf = Owl_parameters.extract theta.bf in
+        let uf = Owl_parameters.extract theta.uf in
+        dyn_u_wrap (fun ~k:_ ~x ~u:_ ->
+            let h_pred = x in
+            let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
+            let f = sigma f_pre in
+            AD.Maths.(wh * f)))
 end
 (* 
 module Linear (Dims : Dims_T) = struct
@@ -357,94 +451,4 @@ struct
               + ((wh + (wf *@ (transpose (h_pred * d_sigma f_pre) * uh)))
                 * (f * d_phi h_hat_pre)))))
 end
-
-module MGU2 (X : sig
-  include Dims_T
-
-  val phi : AD.t -> AD.t
-  val d_phi : AD.t -> AD.t
-  val sigma : AD.t -> AD.t
-  val d_sigma : AD.t -> AD.t
-end) =
-struct
-  module P = Owl_parameters.Make (MGU2_P)
-  open MGU2_P
-  open X
-
-  let requires_linesearch = true
-  let n = X.n
-  let m = X.m
-  let n_beg, wrapper = wrapper ~n ~m
-
-  let init (set : Owl_parameters.setter) =
-    (* h : size 1xN
-       x : size 1xN (x = Bu)
-       h : size 1xK 
-       f : size of h so 1xN *)
-    { wh = set (AD.Mat.gaussian m n)
-    ; bh = set (AD.Mat.zeros 1 n)
-    ; bf = set (AD.Mat.zeros 1 n)
-    ; uh = set (AD.Mat.zeros n n)
-    ; uf = set (AD.Mat.zeros n n)
-    }
-
-
-  let default_regularizer ?(lambda = 1.) prms =
-    let uh = extract prms.uh in
-    let uf = extract prms.uf in
-    let z = Float.(lambda / of_int Int.(n * n)) in
-    AD.Maths.(F z * (l2norm_sqr' uh + l2norm_sqr' uf))
-
-
-  let dyn ~theta =
-    let wh, _, dyn_wrap, _, _ = wrapper (Some theta.wh) in
-    let bh = Owl_parameters.extract theta.bh in
-    let bf = Owl_parameters.extract theta.bf in
-    let uh = Owl_parameters.extract theta.uh in
-    let uf = Owl_parameters.extract theta.uf in
-    dyn_wrap (fun ~k:_ ~x ~u ->
-        let h_pred = x in
-        let f = sigma AD.Maths.(bf + (h_pred *@ uf)) in
-        let h_hat =
-          let hf = AD.Maths.(h_pred * f) in
-          AD.Maths.(phi AD.Maths.(bh + (hf *@ uh)) + (u *@ wh))
-        in
-        AD.Maths.(((F 1. - f) * h_pred) + (f * h_hat)))
-
-
-  let dyn_x =
-    Some
-      (fun ~theta ->
-        let wh, _, _, dyn_x_wrap, _ = wrapper (Some theta.wh) in
-        let bf = Owl_parameters.extract theta.bf in
-        let bh = Owl_parameters.extract theta.bh in
-        let uh = Owl_parameters.extract theta.uh in
-        let uf = Owl_parameters.extract theta.uf in
-        dyn_x_wrap (fun ~k:_ ~x ~u ->
-            let h_pred = x in
-            let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
-            let f = sigma f_pre in
-            let h_hat_pre =
-              let hf = AD.Maths.(h_pred * f) in
-              AD.Maths.(bh + (hf *@ uh))
-            in
-            let h_hat = AD.Maths.(phi h_hat_pre + (u *@ wh)) in
-            AD.Maths.(
-              diagm (F 1. - f)
-              - (uf * ((h_pred - h_hat) * d_sigma f_pre))
-              + (((transpose f * uh) + (uf *@ (transpose (h_pred * d_sigma f_pre) * uh)))
-                * (f * d_phi h_hat_pre)))))
-
-
-  let dyn_u =
-    Some
-      (fun ~theta ->
-        let wh, _, _, _, dyn_u_wrap = wrapper (Some theta.wh) in
-        let bf = Owl_parameters.extract theta.bf in
-        let uf = Owl_parameters.extract theta.uf in
-        dyn_u_wrap (fun ~k:_ ~x ~u:_ ->
-            let h_pred = x in
-            let f_pre = AD.Maths.(bf + (h_pred *@ uf)) in
-            let f = sigma f_pre in
-            AD.Maths.(wh * f)))
-end *)
+*)

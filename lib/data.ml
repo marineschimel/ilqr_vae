@@ -72,4 +72,10 @@ let split_and_distribute ?(reuse = false) ~prefix ~train x =
             Misc.save_bin ~out:test_file y;
             y) )
   in
+  let _ =
+    Stdio.printf
+      "%i %i %!"
+      (Array.length (Lazy.force x_train))
+      (Array.length (Lazy.force x_test))
+  in
   distribute x_train, distribute x_test

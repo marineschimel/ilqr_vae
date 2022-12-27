@@ -126,17 +126,11 @@ end)
 let p x = AD.Maths.(AD.requad x - F 1.)
 let d_p x = AD.d_requad x
 
-module D = Dynamics.Driven_Nonlinear (struct
+module D = Dynamics.Nonlinear (struct
   include S
 
   let phi = `nonlinear (p, d_p)
   let m_ext = 1
-
-  let u_ext =
-    Array.init
-      Int.(n_beg + 100)
-      ~f:(fun i -> if Int.(i < 75 + n_beg) && Int.(i > 50 + n_beg) then 1. else 0.)
-    |> fun z -> Mat.of_array z (-1) 1 |> AD.pack_arr
 end)
 
 include Default.Model (U) (D) (L) (S)
@@ -159,12 +153,21 @@ let train_data, test_data =
              if Int.(i < 10)
              then Mat.save_txt ~out:(in_dir (Printf.sprintf "train_output_%i" i)) x
            in
+           let u_stim =
+             Array.init
+               Int.(n_beg + 100)
+               ~f:(fun i ->
+                 if Int.(i < 75 + n_beg) && Int.(i > 50 + n_beg) then 1. else 0.)
+             |> fun z -> Mat.of_array z (-1) 1 |> AD.pack_arr
+           in
            let laser_u =
              let t_laser = Arr.(sum' (get_slice [ [ i ] ] laser_times)) in
              let laser_idx = Int.(of_float Float.(50. *. t_laser)) in
              let _ = Stdio.printf "%i %!" laser_idx in
-             Array.init n_steps ~f:(fun i ->
-                 if Int.(laser_idx >= i) && Int.(laser_idx < i + 8)
+             Array.init
+               Int.(n_steps + n_beg)
+               ~f:(fun i ->
+                 if Int.(laser_idx >= i + n_beg) && Int.(laser_idx < i + 8 + n_beg)
                  then (
                    let _ = Stdio.printf "tree %!" in
                    Mat.ones 1 1)
@@ -172,7 +175,7 @@ let train_data, test_data =
              |> Mat.concatenate ~axis:0
            in
            let o = AD.pack_arr x in
-           let dat = Data.pack o in
+           let dat = Data.pack ~ext_u:(Some u_stim) o in
            let dat = Data.fill dat ~u:(AD.pack_arr laser_u) ~z:(AD.pack_arr laser_u) in
            let _ =
              if Int.(i < 40)

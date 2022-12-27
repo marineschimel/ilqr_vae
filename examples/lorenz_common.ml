@@ -14,6 +14,8 @@ module Make_model (S : Setup) = struct
   module D = Dynamics.MGU2 (struct
     include S
     include Default.MGU_funs
+
+    let m_ext = 1
   end)
 
   module U = Prior.Student (struct

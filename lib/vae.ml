@@ -7,6 +7,9 @@ module Make (G : Generative.T) (R : Recognition.T with module G = G) = struct
   open Vae_typ.P
   module G = G
   module R = R
+  module U = G.U
+  module D = G.D
+  module L = G.L
 
   let init g r = { generative = g; recognition = r }
 

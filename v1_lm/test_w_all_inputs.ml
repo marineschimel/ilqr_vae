@@ -156,14 +156,11 @@ let train_data, test_data =
            let laser_u =
              let t_laser = Arr.(sum' (get_slice [ [ i ] ] laser_times)) in
              let laser_idx = Int.(of_float Float.(50. *. t_laser)) in
-             let _ = Stdio.printf "%i %!" laser_idx in
              Array.init
                Int.(n_steps + n_beg)
                ~f:(fun i ->
                  if Int.(laser_idx >= i + n_beg) && Int.(laser_idx < i + 8 + n_beg)
-                 then (
-                   let _ = Stdio.printf "tree %!" in
-                   Mat.ones 1 1)
+                 then Mat.ones 1 1
                  else Mat.zeros 1 1)
              |> Mat.concatenate ~axis:0
            in
@@ -219,9 +216,6 @@ let final_prms =
         ~prms
         ~n_to_save:1
         (Array.sub train_data ~pos:0 ~len:2)
-    (* if Int.((k % 500 = 0) && (k> 100))
-      then (test_preds prms "test" test_data;
-    test_preds prms "train" train_data) *)
   in
   Model.train
     ~mini_batch:1

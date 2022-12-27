@@ -11,7 +11,7 @@ let reuse_data = Cmdargs.check "-reuse_data"
 module S = struct
   let n = 20
   let m = 5
-  let n_trials = 2
+  let n_trials = 80
   let n_steps = 100
   let n_output = 3
   let noise_std = 0.1
@@ -20,6 +20,7 @@ end
 open Make_model (S)
 
 let train_data, test_data =
+  let _ = Stdio.printf "N nodes is %i %!" C.n_nodes in
   let data =
     lazy
       (Lorenz_common.generate_from_long ~n_steps:S.n_steps (2 * S.n_trials)
@@ -61,16 +62,20 @@ let init_prms =
       Model.init generative recognition)
 
 
-let _ = Model.save_results ~prefix:(in_dir "init") ~prms:init_prms train_data
+let _ =
+  Model.save_results ~n_to_save:10 ~prefix:(in_dir "init") ~prms:init_prms train_data
+
 
 let final_prms =
   let in_each_iteration ~prms k =
-    if Int.(k % 200 = 0) then Model.save_results ~prefix:(in_dir "final") ~prms train_data
+    if Int.(k % 200 = 0)
+    then Model.save_results ~n_to_save:10 ~prefix:(in_dir "final") ~prms train_data
   in
   Model.train
-    ~n_posterior_samples:(fun k -> if k < 200 then 1 else 1)
+    ~mini_batch:10
+    ~n_posterior_samples:(fun _ -> 1)
     ~max_iter:Cmdargs.(get_int "-max_iter" |> default 40000)
-    ~save_progress_to:(10, 200, in_dir "progress")
+    ~save_progress_to:(10, 2000, in_dir "progress")
     ~in_each_iteration
     ~learning_rate:(`of_iter (fun k -> Float.(0.004 / (1. + sqrt (of_int k / 1.)))))
     ~regularizer
@@ -79,5 +84,13 @@ let final_prms =
 
 
 let _ =
-  Model.save_results ~prefix:(in_dir "final.train") ~prms:final_prms train_data;
-  Model.save_results ~prefix:(in_dir "final.test") ~prms:final_prms test_data
+  Model.save_results
+    ~n_to_save:10
+    ~prefix:(in_dir "final.train")
+    ~prms:final_prms
+    train_data;
+  Model.save_results
+    ~prefix:(in_dir "final.test")
+    ~n_to_save:10
+    ~prms:final_prms
+    test_data

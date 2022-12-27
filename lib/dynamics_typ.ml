@@ -36,3 +36,26 @@ module Nonlinear_P = struct
     | None -> init
     | Some b -> f init (b, with_prefix ?prefix "b")
 end
+
+module MGU2_P = struct
+  type 'a prm =
+    { uf : 'a
+    ; wh : 'a
+    ; uh : 'a
+    ; bf : 'a
+    ; bh : 'a
+    ; b_ext : 'a
+    }
+  [@@deriving accessors ~submodule:A]
+
+  let map ~f x =
+    { b_ext = f x.b_ext; uf = f x.uf; bh = f x.bh; bf = f x.bf; uh = f x.uh; wh = f x.wh }
+
+
+  let fold ?prefix ~init ~f x =
+    let init = f init (x.uh, with_prefix ?prefix "uh") in
+    let init = f init (x.uf, with_prefix ?prefix "uf") in
+    let init = f init (x.bh, with_prefix ?prefix "bh") in
+    let init = f init (x.bf, with_prefix ?prefix "bf") in
+    f init (x.wh, with_prefix ?prefix "wh")
+end

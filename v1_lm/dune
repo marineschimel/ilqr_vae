@@ -1,5 +1,11 @@
 (executables
- (names test test_w_inputs test_w_all_inputs test_gaussian inputs_analysis)
+ (names
+  fit_and_select
+  test
+  test_w_inputs
+  test_w_all_inputs
+  test_nonlinear
+  inputs_analysis)
  (libraries cmdargs ilqr_vae)
  (preprocess
   (pps ppx_accessor)))
