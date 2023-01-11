@@ -9,8 +9,7 @@ struct
   type output_t = AD.t
   type output = AD.t
 
-  let save_output ?zip ?prefix o =
-    Misc.save_mat
+  let save_output ?zip ?prefix o =  Misc.save_mat
       ?zip
       ~out:(Owl_parameters.with_prefix ?prefix Label.label)
       (AD.unpack_arr o)

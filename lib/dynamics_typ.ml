@@ -4,6 +4,7 @@ open Owl_parameters
 module type Dims_T = sig
   val n : int
   val m : int
+  val n_beg : int
 end
 
 module type T = sig
@@ -11,7 +12,6 @@ module type T = sig
   open P
   include Dims_T
 
-  val n_beg : int
   val requires_linesearch : bool
   val dyn : theta:p -> k:int -> x:AD.t -> u:AD.t -> AD.t
   val dyn_x : (theta:p -> k:int -> x:AD.t -> u:AD.t -> AD.t) option

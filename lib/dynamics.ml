@@ -41,9 +41,9 @@ end
    and automates the handling of the first few  "special" time bins
    during which the dynamics are different (to enable setting the
    initial condition in an unrestricted way). *)
-let wrapper ~n ~m =
-  assert (n % m = 0);
-  let n_beg = n / m in
+let wrapper ~n_beg ~n ~m =
+  (* assert (n_beg = 1 || n % m = 0); *)
+  (* let n_beg = n / m in *)
   let beg_bs =
     Array.init n_beg ~f:(fun k ->
         Mat.init_2d m n (fun i j -> if j / n_beg = k && j % m = i then 1. else 0.)
@@ -76,7 +76,7 @@ module Linear (Dims : Dims_T) = struct
   include Dims
 
   let requires_linesearch = false
-  let n_beg, wrapper = wrapper ~n ~m
+  let n_beg, wrapper = wrapper ~n_beg ~n ~m
 
   (* alpha is the spectral abscissa of the equivalent continuous-time system
      beta is the spectral radius of the random S *)
@@ -145,7 +145,7 @@ struct
   let n = X.n
   and m = X.m
 
-  let n_beg, wrapper = wrapper ~n ~m
+  let n_beg, wrapper = wrapper ~n_beg ~n ~m
 
   let phi, d_phi, requires_linesearch =
     match phi with
@@ -201,7 +201,8 @@ struct
 
   let n = X.n
   let m = X.m
-  let n_beg, wrapper = wrapper ~n ~m
+  let n_beg = X.n_beg
+  let n_beg, wrapper = wrapper ~n_beg ~n ~m
   let requires_linesearch = true
 
   let init (set : Owl_parameters.setter) =
@@ -309,7 +310,8 @@ struct
   let requires_linesearch = true
   let n = X.n
   let m = X.m
-  let n_beg, wrapper = wrapper ~n ~m
+  let n_beg = X.n_beg
+  let n_beg, wrapper = wrapper ~n_beg ~n ~m
 
   let init (set : Owl_parameters.setter) =
     (* h : size 1xN

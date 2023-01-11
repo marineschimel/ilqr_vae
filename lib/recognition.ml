@@ -147,7 +147,7 @@ struct
         let c = loss ~theta x0 us in
         let pct_change = Float.(abs ((c -. !cprev) /. !cprev)) in
         cprev := c;
-        Float.(pct_change < X.conv_threshold)
+        Float.(pct_change < X.conv_threshold) || Int.(_k > 10)
     in
     let us =
       let no_reuse () = List.init n_steps_total ~f:(fun _ -> AD.Mat.zeros 1 m) in

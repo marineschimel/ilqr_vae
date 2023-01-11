@@ -1,6 +1,12 @@
 (executables
- (names lorenz lorenz_analysis)
- (libraries cmdargs ilqr_vae owl-ode)
+ (names
+  lorenz
+  lorenz_analysis
+  test_mgu
+  zebrafish_raw
+  zebrafish_predictions
+  infer_inputs)
+ (libraries cmdargs ilqr_vae)
  (preprocess
   (pps ppx_accessor)))
 
